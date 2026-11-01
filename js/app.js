@@ -13,6 +13,8 @@ import { ecranReglages } from './ui/reglages.js';
 import { creerContexte } from './ui/contexte.js';
 import { enregistrerServiceWorker } from './ui/maj.js';
 import { obtenir, charger } from './data/store.js';
+import { chargerTheme } from './ui/theme.js';
+import { demarrageSiPremiereFois } from './ui/demarrage.js';
 import { h, libererUrls } from './ui/dom.js';
 
 const racine = document.getElementById('app');
@@ -76,7 +78,7 @@ function afficher({ conserverDefilement = false, focus = null } = {}) {
       break;
     }
     case 'reglages':
-      vue = { contenu: ecranReglages(), titre: 'Réglages' };
+      vue = { contenu: ecranReglages({ rerendre: () => afficher({ conserverDefilement: true }) }), titre: 'Réglages' };
       break;
     default:
       vue = introuvable('Page introuvable');
@@ -113,8 +115,10 @@ async function demarrer() {
       'Impossible d\u2019ouvrir le stockage du téléphone (navigation privée\u00a0?). Les estimations ne pourront pas être enregistrées.'));
     return;
   }
+  await chargerTheme();
   window.addEventListener('hashchange', () => afficher());
   afficher();
+  demarrageSiPremiereFois();
 }
 
 enregistrerServiceWorker();

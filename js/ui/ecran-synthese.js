@@ -2,6 +2,8 @@
 import { h, picto, format } from './dom.js';
 import { lien } from '../router.js';
 import { LIBELLES_VERDICT } from './etape.js';
+import { confirmer, notifier } from './dialogue.js';
+import * as store from '../data/store.js';
 
 const euros = (v) => (v == null ? '—' : format.euros(v));
 const pct = (v) => (v == null ? '—' : format.pourcent(v));
@@ -128,7 +130,35 @@ export function ecranSynthese(ctx) {
       decomposition(ctx),
     ),
 
+    blocReglages(ctx),
+
     h('a', { class: 'bouton bouton--principal bouton--large', href: lien({ ecran: 'fiche', id: e.id }) },
       picto('export'), 'Voir la fiche et exporter en PDF'),
   ];
+}
+
+/** Les réglages de l'estimation diffèrent-ils des réglages actuels ? */
+export const reglagesDifferents = (e) => JSON.stringify(e.reglages) !== JSON.stringify(store.reglages());
+
+function blocReglages(ctx) {
+  const e = ctx.estimation;
+  if (!reglagesDifferents(e)) {
+    return h('p', { class: 'champ__aide centre' }, 'Calculée avec les réglages actuels.');
+  }
+  return h('section', { class: 'carte carte--info' },
+    h('h2', { class: 'carte__titre' }, 'Grille de prix différente'),
+    h('p', {}, 'Cette estimation a été calculée avec une grille ou des réglages qui ont changé depuis. Elle les conserve pour rester reproductible.'),
+    h('button', {
+      type: 'button', class: 'bouton bouton--secondaire bouton--plein',
+      onclick: async () => {
+        if (!await confirmer({
+          titre: 'Recalculer avec les réglages actuels\u00a0?',
+          texte: 'La grille de prix, les coefficients et les objectifs actuels remplaceront ceux de cette estimation. Les résultats peuvent changer.',
+          libelle: 'Recalculer',
+        })) return;
+        ctx.changer((est) => { est.reglages = structuredClone(store.reglages()); }, { structure: true });
+        notifier('Estimation recalculée');
+      },
+    }, 'Recalculer avec les réglages actuels'),
+  );
 }

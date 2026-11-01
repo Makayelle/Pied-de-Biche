@@ -34,7 +34,7 @@ export function ecranFiche(racine, estimation) {
   const info = h('p', { class: 'ecran-fiche__info' });
 
   const ecran = h('div', { class: 'ecran-fiche' },
-    h('div', { class: 'ecran-fiche__barre' },
+    h('header', { class: 'ecran-fiche__barre' },
       h('a', { class: 'bouton-icone', href: lien({ ecran: 'estimation', id: estimation.id, etape: 'synthese' }), 'aria-label': 'Retour à la synthèse' }, picto('retour')),
       h('strong', {}, 'Fiche'),
       h('button', {
@@ -42,8 +42,7 @@ export function ecranFiche(racine, estimation) {
         onclick: async () => { if (await aideImpression()) window.print(); },
       }, 'Exporter en PDF'),
     ),
-    info,
-    h('main', { id: 'contenu' }, cadre),
+    h('main', { id: 'contenu' }, info, cadre),
   );
   racine.replaceChildren(ecran);
 

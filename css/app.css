@@ -3,6 +3,7 @@
    ========================================================================== */
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
@@ -90,7 +91,7 @@ p { margin: 0 0 var(--e-3); }
 .bouton:active { transform: translateY(1px); }
 .bouton svg { width: 1.25rem; height: 1.25rem; flex: none; }
 .bouton--principal { background: var(--c-accent-plein); color: var(--c-accent-texte); }
-.bouton--principal:hover { background: var(--brique-600); }
+.bouton--principal:hover { background: var(--c-accent-plein-survol); }
 .bouton--secondaire { background: var(--c-surface); color: var(--c-texte); border-color: var(--c-bordure-forte); }
 .bouton--large { width: 100%; min-height: 3.5rem; font-size: var(--t-l); }
 
@@ -378,7 +379,7 @@ textarea.champ__saisie { resize: vertical; min-height: 6rem; }
    Données (J4) : boutons, dialogues, notifications, photos
    ========================================================================== */
 
-.bouton--danger { background: var(--c-alerte); color: #fff; }
+.bouton--danger { background: var(--c-danger-plein); color: #fff; }
 .bouton--danger-discret { background: transparent; color: var(--c-alerte); border-color: var(--c-alerte); }
 .bouton--lien {
   background: none; border: 0; color: var(--c-accent); text-decoration: underline;
@@ -481,3 +482,44 @@ textarea.champ__saisie { resize: vertical; min-height: 6rem; }
   .tableau td { white-space: normal; }
   .tableau thead th { text-transform: none; letter-spacing: 0; font-size: 0.6875rem; }
 }
+
+/* ==========================================================================
+   Réglages et finitions (J6)
+   ========================================================================== */
+
+.repli { padding: 0; }
+.repli__titre {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--e-3);
+  min-height: var(--cible-min); padding: var(--e-4) var(--e-5);
+  font-weight: 700; font-size: var(--t-l); cursor: pointer; list-style: none;
+}
+.repli__titre::-webkit-details-marker { display: none; }
+.repli__titre::after {
+  content: ""; flex: none; width: 0.6rem; height: 0.6rem; margin-right: var(--e-1);
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform var(--duree);
+}
+.repli[open] > .repli__titre::after { transform: rotate(-135deg); }
+.repli__contenu { padding: 0 var(--e-5) var(--e-5); }
+.repli__titre .etiquette { margin-left: var(--e-1); vertical-align: middle; }
+
+.trio { border: 0; padding: var(--e-3) 0 0; margin: 0 0 var(--e-2); border-top: 1px solid var(--c-bordure); min-width: 0; }
+.trio__libelle { font-weight: 650; padding: 0; margin-bottom: var(--e-2); }
+.trio__unite { font-weight: 400; color: var(--c-texte-doux); font-size: var(--t-s); }
+.trio__champs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-2); }
+.trio__champs .champ { margin-bottom: var(--e-2); }
+.trio__champs .champ__libelle { font-weight: 500; color: var(--c-texte-doux); font-size: var(--t-xs); }
+.trio__champs .champ__saisie { padding-inline: var(--e-2); font-size: var(--t-m); }
+.trio__champs .champ__unite { padding: 0 var(--e-2); }
+.champ__aide--alerte { color: var(--c-alerte); font-weight: 600; }
+
+.bouton--plein { width: 100%; margin-top: var(--e-3); }
+.sauvegarde--serre { margin-top: var(--e-2); }
+.carte--info { border-color: var(--c-vigilance); background: var(--c-vigilance-fond); }
+.centre { text-align: center; margin: var(--e-4) 0; }
+
+.demarrage__etapes { margin: 0 0 var(--e-4); padding-left: var(--e-5); display: grid; gap: var(--e-3); }
+.demarrage__etapes li { display: grid; gap: 0.125rem; }
+.demarrage__etapes strong, .demarrage__installer strong { color: var(--c-texte); }
+.demarrage__etapes span, .demarrage__installer span { color: var(--c-texte-doux); font-size: var(--t-s); }
+.demarrage__installer { display: grid; gap: var(--e-1); padding: var(--e-3); border-radius: var(--r-m); background: var(--c-surface-2); }

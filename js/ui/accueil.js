@@ -140,12 +140,18 @@ async function importerFichier(fichier, rerendre) {
 
   if (donnees.reglages && await confirmer({
     titre: 'Importer aussi les réglages ?',
-    texte: 'Ce fichier contient une grille de prix et des réglages. Les estimations existantes ne changent pas.',
+    texte: 'Ce fichier contient une grille de prix et des réglages. Ils remplaceront les vôtres pour les prochaines estimations ; les estimations existantes ne changent pas.',
     libelle: 'Importer les réglages',
   })) {
     await store.enregistrerReglages(donnees.reglages);
+    notifier('Réglages importés');
   }
 
+  if (!donnees.estimations.length) {
+    if (!donnees.reglages) notifier('Aucune estimation dans ce fichier');
+    rerendre();
+    return;
+  }
   await store.importer(donnees.estimations, donnees.photos);
   notifier(`${donnees.estimations.length} estimation(s) importée(s)`);
   rerendre();

@@ -44,3 +44,9 @@ export async function exporterTout() {
     notifier(`${estimations.length} estimation(s) exportée(s)`);
   }
 }
+
+export async function exporterReglages(reglages) {
+  const contenu = await construireExport({ estimations: [], reglages, type: 'reglages' });
+  const date = new Date().toISOString().slice(0, 10);
+  if (await partagerOuTelecharger(contenu, `pied-de-biche_reglages_${date}.json`)) notifier('Réglages exportés');
+}
