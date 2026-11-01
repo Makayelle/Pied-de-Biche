@@ -128,3 +128,7 @@ export const supprimerPhoto = (id) => db.supprimer('photos', id);
 
 export const dernierExport = () => db.lire('meta', 'dernierExport');
 export const noterExport = () => db.ecrire('meta', new Date().toISOString(), 'dernierExport');
+
+// ---- Méta génériques (préférences, aides déjà vues) ----
+export const lireMeta = (cle) => db.lire('meta', cle);
+export const ecrireMeta = (cle, valeur) => db.ecrire('meta', valeur, cle);

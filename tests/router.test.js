@@ -24,6 +24,8 @@ test('routes invalides', () => {
   assert.equal(analyserRoute('#/estimation/a%20b/bien').ecran, 'introuvable');
   assert.equal(analyserRoute('#/estimation/a/bien/trop').ecran, 'introuvable');
   assert.equal(analyserRoute('#/n-importe-quoi').ecran, 'introuvable');
+  assert.equal(analyserRoute('#/fiche/a b').ecran, 'introuvable');
+  assert.equal(analyserRoute('#/fiche').ecran, 'introuvable');
   assert.equal(analyserRoute('#/estimation/%E0%A4%A').ecran, 'introuvable');
 });
 
@@ -31,6 +33,7 @@ test('lien() est l’inverse de analyserRoute()', () => {
   const routes = [
     { ecran: 'accueil' },
     { ecran: 'reglages' },
+    { ecran: 'fiche', id: 'abc_1' },
     ...ETAPES.map((e) => ({ ecran: 'estimation', id: 'x_1-Y', etape: e.id })),
   ];
   for (const r of routes) assert.deepEqual(analyserRoute(lien(r)), r);
