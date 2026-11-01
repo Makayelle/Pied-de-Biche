@@ -1,29 +1,167 @@
-// Écran Réglages (édition de la grille au jalon J6).
+// Écran Réglages : grille de prix, coefficients, frais, objectifs, affichage, sauvegarde.
+// Les modifications s'appliquent aux NOUVELLES estimations ; une estimation existante garde
+// sa copie des réglages, sauf action explicite « Recalculer avec les réglages actuels ».
 import { h, picto } from './dom.js';
-import { exporterTout } from './partage.js';
+import { champNombre, choix, interrupteur } from './composants.js';
+import { confirmer, notifier } from './dialogue.js';
+import { exporterTout, exporterReglages } from './partage.js';
+import { choisirTheme } from './theme.js';
+import { afficherAccueilDemarrage } from './demarrage.js';
 import { APP_VERSION } from '../version.js';
+import { reglagesParDefaut, ETATS, UNITES } from '../calc/defaults.js';
+import * as store from '../data/store.js';
 
-const SECTIONS = [
-  { titre: 'Grille de prix', texte: 'Prix au m² par état de pièce, forfaits d’équipement et gros postes, en fourchette basse, moyenne et haute.' },
-  { titre: 'Coefficients', texte: 'Coefficient matériaux « Nous-mêmes » (pièces, équipements, gros postes), aléas, dommages-ouvrage.' },
-  { titre: 'Frais et fiscalité (RP)', texte: 'Frais d’acquisition, frais de vente, indemnités de remboursement anticipé.', annuel: true },
-  { titre: 'Objectifs', texte: 'Marge cible et seuils de la pastille (vert, orange, rouge), hypothèses du scénario pessimiste.' },
+const THEMES = [
+  { valeur: 'auto', libelle: 'Auto' },
+  { valeur: 'clair', libelle: 'Clair' },
+  { valeur: 'sombre', libelle: 'Sombre' },
 ];
 
-export function ecranReglages() {
+let minuteur = null;
+
+/** Sauvegarde différée des réglages. */
+function sauver(r) {
+  clearTimeout(minuteur);
+  minuteur = setTimeout(() => store.enregistrerReglages(r), 400);
+}
+
+/** Ligne « bas / moyen / haut » pour un prix de la grille. */
+function trio(libelle, objet, unite, r, aide) {
+  const avert = h('p', { class: 'champ__aide champ__aide--alerte', hidden: true }, 'Attention : bas ≤ moyen ≤ haut attendu.');
+  const verifier = () => { avert.hidden = objet.bas <= objet.moyen && objet.moyen <= objet.haut; };
+  const champ = (f, l) => champNombre({
+    libelle: l, unite: '€', valeur: objet[f],
+    onChange: (v) => { objet[f] = v ?? 0; verifier(); sauver(r); },
+  });
+  verifier();
+  return h('fieldset', { class: 'trio' },
+    h('legend', { class: 'trio__libelle' }, libelle, unite ? h('span', { class: 'trio__unite' }, ` · ${unite}`) : null),
+    aide ? h('p', { class: 'champ__aide' }, aide) : null,
+    h('div', { class: 'trio__champs' }, champ('bas', 'Bas'), champ('moyen', 'Moyen'), champ('haut', 'Haut')),
+    avert,
+  );
+}
+
+/** Champ en pourcentage lié à objet[cle]. */
+const pourcent = (libelle, objet, cle, r, aide) => champNombre({
+  libelle, unite: '%', echelle: 100, valeur: objet[cle], aide,
+  onChange: (v) => { objet[cle] = v ?? 0; sauver(r); },
+});
+
+function section(titre, ouvert, ...contenu) {
+  return h('details', { class: 'carte repli', open: ouvert || false },
+    h('summary', { class: 'repli__titre' }, titre),
+    h('div', { class: 'repli__contenu' }, ...contenu));
+}
+
+export function ecranReglages({ rerendre }) {
+  const r = structuredClone(store.reglages());
+  const g = r.grille;
+
   return [
     h('h1', {}, 'Réglages'),
-    h('div', { class: 'liste-reglages' }, SECTIONS.map((s) =>
-      h('section', { class: 'carte' },
-        h('h2', {}, s.titre, s.annuel ? h('span', { class: 'etiquette' }, 'À vérifier chaque année') : null),
-        h('p', {}, s.texte),
-      ),
-    )),
-    h('section', { class: 'carte' },
-      h('h2', {}, 'Sauvegarde'),
-      h('p', {}, 'Toutes les estimations, leurs photos et les réglages dans un seul fichier. L\u2019import se fait depuis l\u2019accueil.'),
-      h('button', { type: 'button', class: 'bouton bouton--secondaire', onclick: exporterTout }, picto('export'), 'Tout exporter'),
+    h('p', { class: 'rappel' }, picto('info'),
+      h('span', {}, 'Ces valeurs s’appliquent aux nouvelles estimations. Une estimation déjà enregistrée garde sa grille, sauf si vous la recalculez depuis sa synthèse.')),
+
+    section('Grille : pièces (€/m²)', false,
+      ...ETATS.filter((e) => e.id !== 'bon').map((e) => trio(e.libelle, g.pieces[e.id], '€/m² de pièce', r)),
     ),
-    h('p', { class: 'pied-version' }, `Pied-de-Biche · version ${APP_VERSION}`),
+
+    section('Grille : équipements (forfaits)', false,
+      ...Object.values(g.equipements).map((eq) => trio(eq.libelle, eq, 'forfait', r)),
+      pourcent('Équipement « partiel »', r, 'coefEquipementPartiel', r, 'Part du forfait complet'),
+    ),
+
+    section('Grille : gros postes', false,
+      h('p', { class: 'champ__aide' }, 'Prix fourni-posé par un artisan, en € TTC.'),
+      ...Object.entries(g.postes).filter(([cle]) => cle !== 'divers').map(([, p]) => trio(p.libelle, p, UNITES[p.unite], r)),
+    ),
+
+    section('Coefficients des travaux', false,
+      h('p', { class: 'champ__aide' }, 'Mode « Nous-mêmes » : part du prix artisan correspondant aux matériaux seuls.'),
+      h('div', { class: 'duo' },
+        pourcent('Matériaux : pièces', r.coefMateriaux, 'pieces', r),
+        pourcent('Matériaux : équipements', r.coefMateriaux, 'equipements', r),
+      ),
+      pourcent('Matériaux : gros postes', r.coefMateriaux, 'postes', r),
+      h('div', { class: 'duo' },
+        pourcent('Aléas', r, 'aleas', r, 'Sur le total des travaux'),
+        pourcent('Dommages-ouvrage', r.dommagesOuvrage, 'taux', r, 'Des travaux'),
+      ),
+      interrupteur({
+        libelle: 'Dommages-ouvrage calculée aléas compris', coche: r.dommagesOuvrage.inclureAleas,
+        onChange: (v) => { r.dommagesOuvrage.inclureAleas = v; sauver(r); },
+      }),
+    ),
+
+    section(h('span', {}, 'Frais et fiscalité (RP) ', h('span', { class: 'etiquette' }, 'À vérifier chaque année')), false,
+      champNombre({
+        libelle: 'Année de référence des valeurs', valeur: r.anneeReference,
+        onChange: (v) => { r.anneeReference = v; sauver(r); },
+      }),
+      h('div', { class: 'duo' },
+        pourcent('Frais d’acquisition', r.fraisAcquisition, 'RP', r, 'Droits et émoluments'),
+        pourcent('Agence à la revente', r, 'fraisAgenceRevente', r, 'Valeur proposée'),
+      ),
+      h('div', { class: 'duo' },
+        champNombre({
+          libelle: 'IRA : mois d’intérêts', unite: 'mois', valeur: r.ira.moisInterets,
+          onChange: (v) => { r.ira.moisInterets = v ?? 0; sauver(r); },
+        }),
+        pourcent('IRA : plafond', r.ira, 'plafondCapital', r, 'Du capital restant dû'),
+      ),
+    ),
+
+    section('Objectifs et scénarios', false,
+      h('div', { class: 'duo' },
+        pourcent('Marge cible', r.objectifs, 'margeCible', r, 'En % du coût de revient (vert)'),
+        pourcent('Seuil d’alerte', r.objectifs, 'seuilAlerte', r, 'En dessous : rouge'),
+      ),
+      h('div', { class: 'duo' },
+        pourcent('Pessimiste : revente', r.scenarios, 'abattementRevente', r, 'Abattement sur le prix'),
+        champNombre({
+          libelle: 'Pessimiste : portage', unite: 'mois', valeur: r.scenarios.moisSupplementaires, aide: 'Mois supplémentaires',
+          onChange: (v) => { r.scenarios.moisSupplementaires = v ?? 0; sauver(r); },
+        }),
+      ),
+    ),
+
+    h('section', { class: 'carte' },
+      h('h2', { class: 'carte__titre' }, 'Affichage'),
+      (() => {
+        const el = h('div');
+        store.lireMeta('theme').then((t) => el.replaceChildren(choix({
+          libelle: 'Thème', options: THEMES, valeur: t ?? 'auto', onChange: choisirTheme,
+        })));
+        return el;
+      })(),
+      h('button', { type: 'button', class: 'bouton bouton--secondaire', onclick: afficherAccueilDemarrage }, picto('info'), 'Revoir l’aide de démarrage'),
+    ),
+
+    h('section', { class: 'carte' },
+      h('h2', { class: 'carte__titre' }, 'Sauvegarde'),
+      h('p', {}, 'Toutes les estimations, leurs photos et les réglages dans un seul fichier. L’import se fait depuis l’accueil.'),
+      h('div', { class: 'sauvegarde sauvegarde--serre' },
+        h('button', { type: 'button', class: 'bouton bouton--secondaire', onclick: exporterTout }, picto('export'), 'Tout exporter'),
+        h('button', { type: 'button', class: 'bouton bouton--secondaire', onclick: () => exporterReglages(r) }, picto('export'), 'Exporter les réglages'),
+      ),
+      h('button', {
+        type: 'button', class: 'bouton bouton--danger-discret bouton--plein',
+        onclick: async () => {
+          if (!await confirmer({
+            titre: 'Revenir aux valeurs par défaut ?',
+            texte: 'La grille de prix et tous les réglages reprennent leurs valeurs d’origine. Les estimations enregistrées ne changent pas.',
+            libelle: 'Réinitialiser', danger: true,
+          })) return;
+          clearTimeout(minuteur);
+          await store.enregistrerReglages(reglagesParDefaut());
+          notifier('Réglages réinitialisés');
+          rerendre();
+        },
+      }, 'Réinitialiser les réglages'),
+    ),
+
+    h('p', { class: 'pied-version' }, `Pied-de-Biche · version ${APP_VERSION} · valeurs ${r.anneeReference ?? ''}`),
   ];
 }
+

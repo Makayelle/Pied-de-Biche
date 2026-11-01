@@ -99,7 +99,7 @@
 .f-bloc, .f-cles, .f-entete, .f-table tr { break-inside: avoid; page-break-inside: avoid; }
 
 /* ---------- Aperçu à l'écran ---------- */
-.ecran-fiche { min-height: 100dvh; background: #8A949C; padding-bottom: var(--e-10); }
+.ecran-fiche { min-height: 100dvh; background: #4A5560; padding-bottom: var(--e-10); }
 .ecran-fiche__barre {
   position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--e-2);
   padding: calc(var(--e-2) + env(safe-area-inset-top)) var(--e-3) var(--e-2);

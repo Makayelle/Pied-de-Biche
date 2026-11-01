@@ -191,7 +191,7 @@ function blocSynthese(e, r) {
   return h('section', { class: 'f-bloc f-synthese' },
     h('h2', {}, 'Synthèse : trois scénarios'),
     h('table', { class: 'f-table' },
-      h('thead', {}, h('tr', {}, h('th', {}, ''), ...noms.map(([n, l]) => h('th', { class: `f-num${n === 'central' ? ' f-central' : ''}` },
+      h('thead', {}, h('tr', {}, h('th', {}, h('span', { class: 'visuellement-cache' }, 'Indicateur')), ...noms.map(([n, l]) => h('th', { class: `f-num${n === 'central' ? ' f-central' : ''}` },
         l, h('span', { class: 'f-sous-titre' }, `travaux ${({ bas: 'bas', moyen: 'moyens', haut: 'hauts' })[s[n].fourchette]}, ${s[n].dureeMois} mois`))))),
       h('tbody', {},
         rangee('Coût de revient', (x) => euros(x.coutRevient)),

@@ -6,6 +6,17 @@ Estimateur de rentabilité **à la visite** pour l'achat-revente de biens à ré
 
 Le cahier des charges complet est dans [`PROJET.md`](PROJET.md).
 
+## Fonctionnalités
+
+- Saisie à la visite : le bien, les pièces (état, équipement, « Nous-mêmes » ou artisan), les gros postes, le financement et la revente.
+- Bandeau de marge nette en direct, avec une pastille vert / orange / rouge.
+- Synthèse en 3 scénarios (optimiste, central, pessimiste), prix d'achat maximum pour la marge cible, rendements.
+- Fiche A4 imprimable et exportable en PDF via l'impression du navigateur, tenant sur une page dans le cas standard.
+- Historique sur le téléphone (IndexedDB) : dupliquer, archiver, supprimer, photos compressées.
+- Export et import JSON (photos comprises) pour échanger avec l'associé, sauvegarde globale.
+- Réglages : grille de prix, coefficients, frais (« à vérifier chaque année »), objectifs, thème clair ou sombre.
+  Une estimation garde sa copie des réglages, sauf recalcul explicite depuis sa synthèse.
+
 ## Principes
 
 - **Zéro dépendance** : HTML, CSS et JavaScript natifs (modules ES), aucun build. Le dépôt est servi tel quel par GitHub Pages.
@@ -28,7 +39,13 @@ Le service worker exige `localhost` ou HTTPS.
 npm test             # node --test, aucune installation nécessaire (Node ≥ 22)
 ```
 
-Les tests vérifient le routeur, et que chaque fichier de l'app est bien mis en cache pour le hors-ligne, sans aucune URL vers un domaine tiers.
+Les tests couvrent :
+- le moteur de calcul, avec un cas de résidence principale calculé à la main ;
+- les migrations et l'aller-retour export/import, photos comprises ;
+- le routeur ;
+- la mise en cache de chaque fichier de l'app pour le hors-ligne ;
+- l'absence de toute URL vers un domaine tiers ;
+- la syntaxe de tous les modules.
 
 ## Publier une nouvelle version
 
@@ -45,10 +62,11 @@ Les PNG de `assets/icons/` sont générés depuis les SVG avec `node tools/icons
 ```
 index.html, manifest.webmanifest, sw.js
 assets/   logo, favicon, icônes PWA
-css/      tokens.css (thèmes clair/sombre), app.css, print.css
+css/      tokens.css (thèmes clair/sombre), app.css, fiche.css, print.css
 js/       app.js (démarrage), router.js, version.js
 js/ui/    un module par écran + utilitaires DOM
-js/calc/  moteur de calcul (jalon J2)
-js/data/  IndexedDB, schéma, migrations, import/export (jalon J4)
+js/calc/  moteur de calcul (fonctions pures) et grille par défaut
+js/data/  IndexedDB, schéma, migrations, import/export, photos
+js/print/ construction de la fiche A4
 tests/    node --test
 ```

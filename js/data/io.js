@@ -88,7 +88,7 @@ export function analyserImport(texte) {
     }));
 
   return {
-    type: donnees.type === 'sauvegarde' ? 'sauvegarde' : 'estimation',
+    type: ['sauvegarde', 'reglages'].includes(donnees.type) ? donnees.type : 'estimation',
     exporteLe: donnees.exporteLe ?? null,
     estimations,
     photos,

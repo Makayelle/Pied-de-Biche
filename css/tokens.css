@@ -34,11 +34,13 @@
   --c-entete-texte: var(--blanc);
   --c-etape-active: var(--ardoise-800);
   --c-accent: var(--brique-600);        /* texte et contours sur fond clair (AA) */
-  --c-accent-plein: var(--brique-500);  /* aplats, boutons */
+  --c-accent-plein: var(--brique-600);  /* aplats, boutons (blanc dessus : 5,6:1) */
+  --c-accent-plein-survol: var(--brique-700);
   --c-accent-texte: var(--blanc);
   --c-accent-doux: var(--brique-100);
   --c-focus: #1C6DD0;
 
+  --c-danger-plein: #B42318; /* fond des boutons destructifs, blanc dessus : 6,5:1 */
   --c-ok: #2E7D4F;        --c-ok-fond: #DDF0E4;
   --c-vigilance: #9A5B00; --c-vigilance-fond: #FBEBCF;
   --c-alerte: #B42318;    --c-alerte-fond: #FBE0DD;
@@ -83,7 +85,7 @@
     --c-entete: var(--ardoise-900);
     --c-etape-active: var(--ardoise-500);
     --c-accent: #EE8A70;
-    --c-accent-plein: var(--brique-500);
+    --c-accent-plein: var(--brique-600);
     --c-accent-doux: #3A2620;
     --c-focus: #7FB2FF;
     --c-ok: #6FCB95;        --c-ok-fond: #17362A;
