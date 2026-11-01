@@ -2,14 +2,6 @@
 import { h, picto, format } from './dom.js';
 import { ETAPES, lien, voisines } from '../router.js';
 
-const APERCU = {
-  synthese: {
-    titre: 'Synthèse',
-    points: ['Trois scénarios : optimiste, central, pessimiste', 'Marge brute et nette, rendement sur apport',
-      'Prix d\u2019achat maximum pour la marge cible', 'Export de la fiche PDF'],
-  },
-};
-
 export function barreEtapes(id, etapeCourante) {
   return h('nav', { class: 'etapes', 'aria-label': 'Étapes de l’estimation' },
     h('ol', {}, ETAPES.map((e, i) =>
@@ -21,18 +13,6 @@ export function barreEtapes(id, etapeCourante) {
       ),
     )),
   );
-}
-
-export function ecranApercu(etape) {
-  const apercu = APERCU[etape];
-  return [
-    h('h1', {}, apercu.titre),
-    h('div', { class: 'carte' },
-      h('p', {}, h('span', { class: 'etiquette' }, 'Jalon J5')),
-      h('p', {}, 'Cet écran présentera\u00a0:'),
-      h('ul', {}, apercu.points.map((p) => h('li', {}, p))),
-    ),
-  ];
 }
 
 export function navigationEtapes({ id, etape }) {

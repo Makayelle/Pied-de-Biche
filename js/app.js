@@ -2,7 +2,9 @@
 import { analyserRoute, lien, ETAPES } from './router.js';
 import { monterCoquille } from './ui/shell.js';
 import { ecranAccueil } from './ui/accueil.js';
-import { ecranApercu, navigationEtapes, barreEtapes, bandeauMarge } from './ui/etape.js';
+import { navigationEtapes, barreEtapes, bandeauMarge } from './ui/etape.js';
+import { ecranSynthese } from './ui/ecran-synthese.js';
+import { ecranFiche } from './ui/ecran-fiche.js';
 import { ecranBien } from './ui/ecran-bien.js';
 import { ecranPieces } from './ui/ecran-pieces.js';
 import { ecranPostes } from './ui/ecran-postes.js';
@@ -20,7 +22,7 @@ const ECRANS = {
   pieces: ecranPieces,
   postes: ecranPostes,
   financement: ecranFinancement,
-  synthese: (ctx) => ecranApercu('synthese', ctx),
+  synthese: ecranSynthese,
 };
 
 const introuvable = (texte) => ({
@@ -32,11 +34,26 @@ const introuvable = (texte) => ({
  * Affiche l'écran correspondant au hash.
  * @param {{ conserverDefilement?: boolean, focus?: string|null }} opts
  */
+let nettoyage = null;
+
 function afficher({ conserverDefilement = false, focus = null } = {}) {
   const route = analyserRoute(location.hash);
   const defilement = window.scrollY;
   libererUrls();
+  nettoyage?.();
+  nettoyage = null;
   let vue;
+
+  // La fiche a sa propre mise en page (aperçu A4), sans la coquille de l'app.
+  if (route.ecran === 'fiche') {
+    const estimation = obtenir(route.id);
+    if (estimation) {
+      nettoyage = ecranFiche(racine, estimation);
+      document.title = `Fiche ${estimation.bien.adresse || ''} · Pied-de-Biche`;
+      window.scrollTo(0, 0);
+      return;
+    }
+  }
 
   switch (route.ecran) {
     case 'accueil':
