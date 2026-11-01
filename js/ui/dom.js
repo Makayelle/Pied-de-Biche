@@ -37,6 +37,11 @@ const PICTOS = {
   suivant: '<path d="M9 18l6-6-6-6"/>',
   maison: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  appareil: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+  plusieurs: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  import: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>',
+  export: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 17v3h16v-3"/>',
   chantier: '<path d="M2 20h20"/><path d="M5 20V9l7-5 7 5v11"/><path d="M9 20v-5h6v5"/><path d="M14 4l6-2"/>',
 };
 
@@ -60,3 +65,15 @@ export const format = {
   pourcent: (n) => new Intl.NumberFormat('fr-FR', { style: 'percent', maximumFractionDigits: 1 }).format(n),
   surface: (n) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n)} m²`,
 };
+
+// URL d'objets (photos) : libérées à chaque changement d'écran pour éviter les fuites mémoire.
+const urls = new Set();
+export function urlObjet(blob) {
+  const url = URL.createObjectURL(blob);
+  urls.add(url);
+  return url;
+}
+export function libererUrls() {
+  for (const u of urls) URL.revokeObjectURL(u);
+  urls.clear();
+}

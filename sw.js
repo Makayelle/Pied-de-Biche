@@ -1,6 +1,6 @@
 // Service worker de Pied-de-Biche — stratégie cache-first versionnée.
 // Changer VERSION (et js/version.js) à chaque mise en ligne pour déclencher la mise à jour.
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const CACHE = `pdb-${VERSION}`;
 
 // Liste exhaustive des fichiers de l'app (chemins relatifs, vérifiée par les tests).
@@ -18,11 +18,18 @@ const ASSETS = [
   'js/calc/engine.js',
   'js/data/schema.js',
   'js/data/store.js',
+  'js/data/db.js',
+  'js/data/migrations.js',
+  'js/data/io.js',
+  'js/data/photos.js',
   'js/ui/dom.js',
   'js/ui/shell.js',
   'js/ui/accueil.js',
   'js/ui/etape.js',
   'js/ui/composants.js',
+  'js/ui/dialogue.js',
+  'js/ui/partage.js',
+  'js/ui/photos.js',
   'js/ui/contexte.js',
   'js/ui/ecran-bien.js',
   'js/ui/ecran-pieces.js',
