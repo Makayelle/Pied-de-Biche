@@ -3,6 +3,9 @@ import { h, picto, format } from './dom.js';
 import { champNombre, champTexte, choix, duo } from './composants.js';
 import { ETATS, TYPES_PIECES } from '../calc/defaults.js';
 import { creerPiece } from '../data/schema.js';
+import { galeriePhotos } from './photos.js';
+import { confirmer } from './dialogue.js';
+import * as store from '../data/store.js';
 
 const MODES = [
   { valeur: 'artisan', libelle: 'Artisan' },
@@ -31,7 +34,7 @@ export function sortieCout(ctx, calcul) {
   return h('p', { class: 'cout' }, central, plage);
 }
 
-function cartePiece(ctx, piece, index) {
+function cartePiece(ctx, piece) {
   const p = (cle, opts) => ctx.poser(piece, cle, opts);
   const type = TYPES_PIECES.find((t) => t.id === piece.type);
 
@@ -40,9 +43,14 @@ function cartePiece(ctx, piece, index) {
       h('h2', { class: 'carte__titre' }, piece.nom || type.libelle),
       h('button', {
         type: 'button', class: 'bouton-icone bouton-icone--discret', 'aria-label': `Supprimer ${piece.nom || type.libelle}`,
-        onclick: () => {
-          if (!confirm(`Supprimer la pièce « ${piece.nom || type.libelle} » ?`)) return;
-          ctx.changer((e) => { e.pieces.splice(index, 1); }, { structure: true });
+        onclick: async () => {
+          if (!await confirmer({
+            titre: 'Supprimer la pièce\u00a0?', texte: `« ${piece.nom || type.libelle} » et ses photos seront supprimées.`,
+            libelle: 'Supprimer', danger: true,
+          })) return;
+          const photos = (await store.photosDe(ctx.estimation.id)).filter((ph) => ph.cible === piece.id);
+          await Promise.all(photos.map((ph) => store.supprimerPhoto(ph.id)));
+          ctx.changer((e) => { e.pieces.splice(e.pieces.indexOf(piece), 1); }, { structure: true });
         },
       }, picto('corbeille')),
     ),
@@ -59,6 +67,7 @@ function cartePiece(ctx, piece, index) {
       : null,
     choix({ libelle: 'Réalisation', options: MODES, valeur: piece.mode, onChange: p('mode') }),
     champTexte({ libelle: 'Note', valeur: piece.note, onChange: p('note') }),
+    galeriePhotos(ctx, piece.id),
     sortieCout(ctx, (r) => r.travaux.lignes.find((l) => l.id === piece.id)),
   );
 }
@@ -75,7 +84,7 @@ export function ecranPieces(ctx) {
     h('h1', {}, 'Pièces'),
     pieces.length === 0
       ? h('p', { class: 'vide vide--compact' }, 'Ajoutez les pièces au fil de la visite.')
-      : h('div', { class: 'pile' }, pieces.map((piece, i) => cartePiece(ctx, piece, i))),
+      : h('div', { class: 'pile' }, pieces.map((piece) => cartePiece(ctx, piece))),
 
     h('section', { class: 'ajout', 'aria-labelledby': 'titre-ajout' },
       h('h2', { id: 'titre-ajout', class: 'ajout__titre' }, 'Ajouter une pièce'),

@@ -10,8 +10,8 @@ import { ecranFinancement } from './ui/ecran-financement.js';
 import { ecranReglages } from './ui/reglages.js';
 import { creerContexte } from './ui/contexte.js';
 import { enregistrerServiceWorker } from './ui/maj.js';
-import { obtenir } from './data/store.js';
-import { h } from './ui/dom.js';
+import { obtenir, charger } from './data/store.js';
+import { h, libererUrls } from './ui/dom.js';
 
 const racine = document.getElementById('app');
 
@@ -35,11 +35,12 @@ const introuvable = (texte) => ({
 function afficher({ conserverDefilement = false, focus = null } = {}) {
   const route = analyserRoute(location.hash);
   const defilement = window.scrollY;
+  libererUrls();
   let vue;
 
   switch (route.ecran) {
     case 'accueil':
-      vue = { contenu: ecranAccueil(), titre: 'Mes estimations' };
+      vue = { contenu: ecranAccueil({ rerendre: () => afficher({ conserverDefilement: true }) }), titre: 'Mes estimations' };
       break;
     case 'estimation': {
       const estimation = obtenir(route.id);
@@ -86,6 +87,18 @@ function afficher({ conserverDefilement = false, focus = null } = {}) {
   afficher.dejaAffiche = true;
 }
 
-window.addEventListener('hashchange', () => afficher());
-afficher();
+async function demarrer() {
+  try {
+    await charger();
+  } catch (err) {
+    console.error(err);
+    racine.replaceChildren(h('p', { class: 'noscript' },
+      'Impossible d\u2019ouvrir le stockage du téléphone (navigation privée\u00a0?). Les estimations ne pourront pas être enregistrées.'));
+    return;
+  }
+  window.addEventListener('hashchange', () => afficher());
+  afficher();
+}
+
 enregistrerServiceWorker();
+demarrer();

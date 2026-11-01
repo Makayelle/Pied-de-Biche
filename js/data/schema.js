@@ -46,8 +46,46 @@ export function creerEstimation({ reglages = reglagesParDefaut(), maintenant = n
     travaux: { heuresEstimees: null, dommagesOuvrage: 'auto' },
 
     reglages,
-    photos: [],
   };
+}
+
+/** Copie d'une estimation (nouvel identifiant), pour comparer deux hypothèses. */
+export function copierEstimation(source, { maintenant = new Date() } = {}) {
+  const copie = structuredClone(source);
+  const date = maintenant.toISOString();
+  copie.id = nouvelId('e');
+  copie.creeLe = date;
+  copie.modifieLe = date;
+  copie.archive = false;
+  copie.bien.adresse = source.bien.adresse ? `${source.bien.adresse} (copie)` : '(copie)';
+  for (const p of copie.pieces) p.id = nouvelId('p');
+  return copie;
+}
+
+const estObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+/** Complète récursivement `cible` avec les clés manquantes de `modele` (sans écraser l'existant). */
+function completer(cible, modele) {
+  for (const [cle, valeur] of Object.entries(modele)) {
+    if (!(cle in cible)) cible[cle] = structuredClone(valeur);
+    else if (estObjet(valeur) && estObjet(cible[cle])) completer(cible[cle], valeur);
+  }
+  return cible;
+}
+
+/**
+ * Normalise une estimation déjà migrée : ajoute les champs manquants (valeurs par défaut),
+ * complète les pièces et ajoute les gros postes absents de la liste.
+ */
+export function normaliserEstimation(e) {
+  const modele = creerEstimation({ reglages: e.reglages ?? reglagesParDefaut() });
+  delete modele.id;
+  completer(e, modele);
+  e.pieces = e.pieces.map((p) => completer(p, { ...creerPiece(p.type ?? 'autre'), id: p.id ?? nouvelId('p') }));
+  for (const cle of Object.keys(e.reglages.grille.postes)) {
+    if (!e.postes.some((p) => p.cle === cle)) e.postes.push(creerPoste(cle, e.reglages.grille.postes[cle]));
+  }
+  return e;
 }
 
 export function creerPiece(type = 'sejour') {

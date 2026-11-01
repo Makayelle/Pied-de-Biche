@@ -1,6 +1,7 @@
 // Étape 1 — Le bien.
 import { h } from './dom.js';
 import { champNombre, champTexte, choix, section, duo } from './composants.js';
+import { galeriePhotos } from './photos.js';
 
 const TYPES = [
   { valeur: 'maison', libelle: 'Maison' },
@@ -56,9 +57,10 @@ export function ecranBien(ctx) {
       champTexte({ libelle: 'Contact', valeur: b.contact, placeholder: 'Nom, téléphone…', onChange: p('contact') }),
     ),
 
+    section('Photos du bien', galeriePhotos(ctx, 'bien')),
+
     section('Notes',
       champTexte({ libelle: 'Notes de visite', valeur: b.notes, multiligne: true, onChange: p('notes') }),
-      h('p', { class: 'champ__aide' }, 'Les photos arrivent au jalon J4.'),
     ),
   ];
 }
