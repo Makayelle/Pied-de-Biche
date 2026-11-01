@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Pied-de-Biche — design tokens
+   Base : bleu ardoise. Accent : orange brique. Papier chaud pour le fond.
+   Les couleurs d'état (ok / vigilance / alerte) sont toujours doublées
+   d'un libellé ou d'un pictogramme : la couleur n'est jamais seule porteuse de sens.
+   ========================================================================== */
+
+:root {
+  /* Palette brute */
+  --ardoise-950: #101C26;
+  --ardoise-900: #172735;
+  --ardoise-800: #23384A;
+  --ardoise-700: #2F4A61;
+  --ardoise-500: #5A7489;
+  --ardoise-300: #A9B9C6;
+  --ardoise-100: #E3E9EE;
+  --brique-700: #8E3826;
+  --brique-600: #A9442F;
+  --brique-500: #C8553D;
+  --brique-400: #E0674C;
+  --brique-100: #F8E3DC;
+  --papier: #F4F1EC;
+  --blanc: #FFFFFF;
+
+  /* Rôles — thème clair */
+  --c-fond: var(--papier);
+  --c-surface: var(--blanc);
+  --c-surface-2: #EBE6DE;
+  --c-bordure: #D6D0C6;
+  --c-bordure-forte: #9AA6B0;
+  --c-texte: #1B2631;
+  --c-texte-doux: #55616C;
+  --c-entete: var(--ardoise-800);
+  --c-entete-texte: var(--blanc);
+  --c-etape-active: var(--ardoise-800);
+  --c-accent: var(--brique-600);        /* texte et contours sur fond clair (AA) */
+  --c-accent-plein: var(--brique-500);  /* aplats, boutons */
+  --c-accent-texte: var(--blanc);
+  --c-accent-doux: var(--brique-100);
+  --c-focus: #1C6DD0;
+
+  --c-ok: #2E7D4F;        --c-ok-fond: #DDF0E4;
+  --c-vigilance: #9A5B00; --c-vigilance-fond: #FBEBCF;
+  --c-alerte: #B42318;    --c-alerte-fond: #FBE0DD;
+
+  /* Typographie — polices système uniquement (aucune police distante) */
+  --police: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --police-chiffres: ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --t-xs: 0.8125rem;   /* 13 */
+  --t-s: 0.875rem;     /* 14 */
+  --t-m: 1rem;         /* 16 — minimum pour les champs (évite le zoom iOS) */
+  --t-l: 1.125rem;     /* 18 */
+  --t-xl: 1.375rem;    /* 22 */
+  --t-xxl: 1.75rem;    /* 28 */
+  --t-chiffre: 2rem;   /* 32 */
+  --interligne: 1.45;
+
+  /* Espacements (base 4 px) */
+  --e-1: 0.25rem; --e-2: 0.5rem; --e-3: 0.75rem; --e-4: 1rem;
+  --e-5: 1.25rem; --e-6: 1.5rem; --e-8: 2rem; --e-10: 2.5rem;
+
+  /* Formes */
+  --r-s: 6px; --r-m: 10px; --r-l: 16px; --r-plein: 999px;
+  --ombre-1: 0 1px 2px rgb(16 28 38 / 0.08), 0 1px 1px rgb(16 28 38 / 0.04);
+  --ombre-2: 0 6px 20px rgb(16 28 38 / 0.14);
+
+  /* Ergonomie terrain */
+  --cible-min: 48px;           /* ≥ 44 px exigé, 48 px visé */
+  --largeur-max: 44rem;
+  --hauteur-bandeau: 4.25rem;
+  --duree: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) {
+    --c-fond: var(--ardoise-950);
+    --c-surface: #182531;
+    --c-surface-2: #22313E;
+    --c-bordure: #33475A;
+    --c-bordure-forte: #5A7489;
+    --c-texte: #E8ECEF;
+    --c-texte-doux: #A3B0BB;
+    --c-entete: var(--ardoise-900);
+    --c-etape-active: var(--ardoise-500);
+    --c-accent: #EE8A70;
+    --c-accent-plein: var(--brique-500);
+    --c-accent-doux: #3A2620;
+    --c-focus: #7FB2FF;
+    --c-ok: #6FCB95;        --c-ok-fond: #17362A;
+    --c-vigilance: #F0B24A; --c-vigilance-fond: #3A2C12;
+    --c-alerte: #F28B80;    --c-alerte-fond: #3D1D1A;
+    --ombre-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --ombre-2: 0 6px 20px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* Forçage manuel du thème (réglage prévu au J6) */
+:root[data-theme="sombre"] {
+  --c-fond: var(--ardoise-950);
+  --c-surface: #182531;
+  --c-surface-2: #22313E;
+  --c-bordure: #33475A;
+  --c-bordure-forte: #5A7489;
+  --c-texte: #E8ECEF;
+  --c-texte-doux: #A3B0BB;
+  --c-entete: var(--ardoise-900);
+  --c-etape-active: var(--ardoise-500);
+  --c-accent: #EE8A70;
+  --c-accent-doux: #3A2620;
+  --c-focus: #7FB2FF;
+  --c-ok: #6FCB95;        --c-ok-fond: #17362A;
+  --c-vigilance: #F0B24A; --c-vigilance-fond: #3A2C12;
+  --c-alerte: #F28B80;    --c-alerte-fond: #3D1D1A;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duree: 0ms; }
+}

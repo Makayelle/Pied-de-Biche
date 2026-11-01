@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#23384A"/>
+  <rect x="18" y="32" width="27" height="24" rx="2" fill="#FFFFFF"/>
+  <path d="M23 50 L29.5 43.5 L33.5 47.5 L40 41" fill="none" stroke="#C8553D" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M35 39.6 L41.6 39.4 L41.4 46" fill="none" stroke="#C8553D" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M11 32 L32 12.5 L53 32 L53 56" fill="none" stroke="#E0674C" stroke-width="7" stroke-linecap="square" stroke-linejoin="round"/>
+  <!-- Griffe fendue et biseau du manche -->
+  <path d="M11.4 31.7 L9.7 35.7 L7.2 33.1 Z" fill="#23384A"/>
+  <path d="M49 60 L57 60 L57 54.5 Z" fill="#23384A"/>
+</svg>

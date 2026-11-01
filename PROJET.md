@@ -353,3 +353,19 @@ Les réglages fiscaux doivent être clairement présentés comme **« à vérifi
 - Génération d'un vrai fichier PDF natif (écrit à la main, toujours sans dépendance) pour un partage en un clic.
 - Synchronisation entre associés (par fichier partagé, ou back-end léger plus tard).
 - Mode « offre » : génération d'une argumentation chiffrée pour la négociation.
+
+---
+
+## 15. Décisions prises (novembre 2026)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Forfait WC | Le forfait d'équipement s'applique aussi aux **WC** (aucun / partiel / complet), en plus de la cuisine et de la salle de bain. |
+| 2 | Postes sans prix (ITI, poêle, radiateurs électriques, divers…) | Valeurs indicatives ajoutées à la grille par défaut, toutes **modifiables dans l'onglet Réglages**. |
+| 3 | Base de la dommages-ouvrage | **Travaux hors aléas**, au coût effectivement chiffré (matériaux seuls pour « Nous-mêmes »). Option dans les réglages pour inclure les aléas. |
+| 4 | Coefficient matériaux par catégorie | Trois coefficients : **pièces**, **équipements**, **gros postes** (40 % par défaut chacun). |
+| 5 | Rendement annualisé | Calculé sur la **durée de portage**. |
+| 6 | IRA en RP | Calcul simplifié sur le **capital emprunté** (plafond : min(6 mois d'intérêts, 3 %)). |
+| 7 | TVA en MDB | Hors périmètre v1 (prix TTC, revente d'ancien supposée exonérée), mention sur la fiche. |
+| 8 | Flat tax | **31,4 %** (2026), réglage modifiable « à vérifier chaque année ». |
+| 9 | Périmètre v1 | **Régime RP uniquement.** Le modèle de données garde un champ `regime` (valeur `RP`) et le moteur est découpé pour accueillir le MDB plus tard sans migration cassante. |

@@ -1,0 +1,8 @@
+/* Fiche A4 imprimable — mise en page complète au jalon J5. */
+@page { size: A4 portrait; margin: 10mm; }
+
+@media print {
+  .entete, .etapes, .bandeau-marge, .toast-maj, .navigation-etapes, .lien-evitement { display: none !important; }
+  body { background: #fff; color: #000; }
+  .contenu { padding: 0; max-width: none; }
+}
