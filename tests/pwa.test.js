@@ -68,3 +68,14 @@ test('pas d’attribut style en ligne (bloqué par la CSP)', () => {
     assert.doesNotMatch(lire(f), /\sstyle="/, `attribut style dans ${f}`);
   }
 });
+
+test('tous les modules JS sont syntaxiquement valides', async () => {
+  const { execFileSync } = await import('node:child_process');
+  for (const f of ['sw.js', ...fichiers('js')]) {
+    try {
+      execFileSync(process.execPath, ['--check', join(racine, f)], { stdio: 'pipe' });
+    } catch (err) {
+      assert.fail(`${f} :\n${err.stderr}`);
+    }
+  }
+});

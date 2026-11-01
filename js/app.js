@@ -1,16 +1,40 @@
 // Démarrage de l'application et aiguillage des écrans.
-import { analyserRoute, ETAPES } from './router.js';
+import { analyserRoute, lien, ETAPES } from './router.js';
 import { monterCoquille } from './ui/shell.js';
 import { ecranAccueil } from './ui/accueil.js';
-import { ecranEtape, barreEtapes, bandeauMarge } from './ui/etape.js';
+import { ecranApercu, navigationEtapes, barreEtapes, bandeauMarge } from './ui/etape.js';
+import { ecranBien } from './ui/ecran-bien.js';
+import { ecranPieces } from './ui/ecran-pieces.js';
+import { ecranPostes } from './ui/ecran-postes.js';
+import { ecranFinancement } from './ui/ecran-financement.js';
 import { ecranReglages } from './ui/reglages.js';
+import { creerContexte } from './ui/contexte.js';
 import { enregistrerServiceWorker } from './ui/maj.js';
+import { obtenir } from './data/store.js';
 import { h } from './ui/dom.js';
 
 const racine = document.getElementById('app');
 
-function afficher() {
+const ECRANS = {
+  bien: ecranBien,
+  pieces: ecranPieces,
+  postes: ecranPostes,
+  financement: ecranFinancement,
+  synthese: (ctx) => ecranApercu('synthese', ctx),
+};
+
+const introuvable = (texte) => ({
+  contenu: [h('h1', {}, texte), h('p', {}, h('a', { href: lien({ ecran: 'accueil' }) }, 'Retour à l’accueil'))],
+  titre: texte,
+});
+
+/**
+ * Affiche l'écran correspondant au hash.
+ * @param {{ conserverDefilement?: boolean, focus?: string|null }} opts
+ */
+function afficher({ conserverDefilement = false, focus = null } = {}) {
   const route = analyserRoute(location.hash);
+  const defilement = window.scrollY;
   let vue;
 
   switch (route.ecran) {
@@ -18,11 +42,17 @@ function afficher() {
       vue = { contenu: ecranAccueil(), titre: 'Mes estimations' };
       break;
     case 'estimation': {
+      const estimation = obtenir(route.id);
+      if (!estimation) {
+        vue = introuvable('Estimation introuvable');
+        break;
+      }
+      const ctx = creerContexte(estimation, (o) => afficher({ conserverDefilement: true, ...o }));
       const etape = ETAPES.find((e) => e.id === route.etape);
       vue = {
-        contenu: ecranEtape(route),
+        contenu: [...ECRANS[route.etape](ctx), navigationEtapes(route)],
         avant: barreEtapes(route.id, route.etape),
-        bandeau: bandeauMarge(),
+        bandeau: bandeauMarge(ctx),
         titre: etape.libelle,
       };
       break;
@@ -31,20 +61,31 @@ function afficher() {
       vue = { contenu: ecranReglages(), titre: 'Réglages' };
       break;
     default:
-      vue = {
-        contenu: [h('h1', {}, 'Page introuvable'), h('p', {}, h('a', { href: '#/' }, 'Retour à l’accueil'))],
-        titre: 'Page introuvable',
-      };
+      vue = introuvable('Page introuvable');
   }
 
   const { main } = monterCoquille(racine, { route, ...vue });
   document.title = `${vue.titre} · Pied-de-Biche`;
-  window.scrollTo(0, 0);
-  // Accessibilité : on place le focus sur le contenu après un changement d'écran.
-  if (afficher.dejaAffiche) main.focus({ preventScroll: true });
+
+  // Rend visible l'étape courante dans la barre défilante.
+  const etapeCourante = document.querySelector('.etapes [aria-current="step"]');
+  if (etapeCourante) {
+    const barre = etapeCourante.closest('ol');
+    barre.scrollLeft = etapeCourante.parentElement.offsetLeft - (barre.clientWidth - etapeCourante.offsetWidth) / 2;
+  }
+  window.scrollTo(0, conserverDefilement ? defilement : 0);
+
+  const cible = focus && document.querySelector(focus);
+  if (cible) {
+    cible.focus({ preventScroll: true });
+    cible.scrollIntoView({ block: 'center' });
+  } else if (!conserverDefilement && afficher.dejaAffiche) {
+    // Accessibilité : focus sur le contenu après un changement d'écran.
+    main.focus({ preventScroll: true });
+  }
   afficher.dejaAffiche = true;
 }
 
-window.addEventListener('hashchange', afficher);
+window.addEventListener('hashchange', () => afficher());
 afficher();
 enregistrerServiceWorker();
