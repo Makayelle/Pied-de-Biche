@@ -3,7 +3,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  n, coutPiece, coutPoste, quantitePoste, calculerTravaux, coutFinancement, coutPortage,
+  n, coutPiece, budgetTravauxMax, prixAchatEffectif, coutPoste, quantitePoste, calculerTravaux, coutFinancement, coutPortage,
   prixReventeBase, fraisVente, calculerScenario, parametresScenarios, prixAchatMax,
   verdict, calculerEstimation, margeNette,
 } from '../js/calc/engine.js';
@@ -288,5 +288,93 @@ describe('verdict, robustesse, régime', () => {
 
   test('les réglages par défaut sont figés', () => {
     assert.throws(() => { REGLAGES_DEFAUT.grille.pieces.renover.moyen = 1; });
+  });
+});
+
+describe('prix d\u2019achat retenu', () => {
+  test('sans prix négocié, le calcul se fait sur le prix affiché', () => {
+    const e = casReference();
+    e.bien.prixAffiche = 150000;
+    e.bien.prixAchat = null;
+    assert.equal(prixAchatEffectif(e), 150000);
+    const r = calculerEstimation(e);
+    assert.equal(r.complet, true);
+    assert.equal(r.prixNegocie, false);
+    proche(r.scenarios.central.margeNette, 45910.60, 'identique au cas de référence');
+  });
+
+  test('le prix maximum est donné même sans aucun prix d\u2019achat (revente seule)', () => {
+    const e = casReference();
+    e.bien.prixAchat = null;
+    e.bien.prixAffiche = null;
+    const r = calculerEstimation(e);
+    assert.equal(r.complet, false);
+    proche(r.prixAchatMax, 150226.91);
+    assert.ok(r.prixAchatMaxPrudent < r.prixAchatMax, 'le prix prudent (pessimiste) est plus bas');
+  });
+});
+
+describe('budget travaux maximum', () => {
+  test('cas de référence : budget pour 20 % au prix de 150 000 €', () => {
+    // Coût de revient cible = 274 000 / 1,2 = 228 333,33
+    // Hors travaux = 228 089,40 − 51 474 − 1 790,40 = 174 825
+    // Budget = 228 333,33 − 174 825 = 53 508,33 (contre 53 264,40 estimés)
+    const r = calculerEstimation(casReference());
+    proche(r.budgetTravauxMax, 274000 / 1.2 - 174825);
+    assert.ok(r.budgetTravauxMax > r.scenarios.central.detail.travaux + r.scenarios.central.detail.dommagesOuvrage);
+  });
+
+  test('négatif quand le prix d\u2019achat seul empêche la cible', () => {
+    const e = casReference();
+    e.bien.prixAchat = 260000;
+    assert.ok(calculerEstimation(e).budgetTravauxMax < 0);
+  });
+});
+
+describe('estimation rapide (calculée à la main)', () => {
+  /**
+   * Maison de 90 m² affichée 120 000 €, état général « à rénover », réalisation « Nous-mêmes »,
+   * revente 220 000 €, agence 5 %. Ni financement ni portage.
+   */
+  function casRapide() {
+    const e = creerEstimation({ mode: 'rapide' });
+    Object.assign(e.bien, { surfaceHabitable: 90, prixAffiche: 120000, etatGeneral: 'renover', modeGeneral: 'nous' });
+    Object.assign(e.revente, { prix: 220000, fraisAgencePct: 0.05 });
+    // Champs du mode détaillé remplis : ils doivent être ignorés.
+    Object.assign(e.financement, { emprunt: 100000, tauxAnnuel: 0.04 });
+    e.portage.energieMensuelle = 200;
+    e.pieces.push({ ...creerPiece('cuisine'), surface: 10, etat: 'refaire', equipement: 'complet' });
+    return e;
+  }
+
+  test('travaux : surface × prix de l\u2019état × coefficient matériaux', () => {
+    const t = calculerTravaux(casRapide());
+    assert.equal(t.lignes.length, 1, 'une seule ligne globale, les pièces sont ignorées');
+    proche(t.sousTotal.bas, 90 * 250 * 0.4);    //  9 000
+    proche(t.sousTotal.moyen, 90 * 450 * 0.4);  // 16 200
+    proche(t.sousTotal.haut, 90 * 700 * 0.4);   // 25 200
+    proche(t.total.moyen, 16200 * 1.15);        // 18 630
+    assert.equal(t.dommagesOuvrage.moyen, 0);
+  });
+
+  test('marge centrale et préconisations', () => {
+    const r = calculerEstimation(casRapide());
+    const c = r.scenarios.central;
+    // Coût de revient = 120 000 + 9 000 (7,5 %) + 18 630 = 147 630 ; frais de vente = 11 000
+    proche(c.coutRevient, 147630);
+    assert.equal(c.detail.financement.total, 0);
+    assert.equal(c.detail.portage.total, 0);
+    proche(c.detail.fraisVente.total, 11000);
+    proche(c.margeNette, 220000 - 11000 - 147630); // 61 370
+    // Prix max : (209 000 / 1,2 − 18 630) / 1,075
+    proche(r.prixAchatMax, (209000 / 1.2 - 18630) / 1.075);
+    // Budget travaux : 209 000 / 1,2 − 129 000
+    proche(r.budgetTravauxMax, 209000 / 1.2 - 129000);
+  });
+
+  test('état général « bon » : aucun travaux', () => {
+    const e = casRapide();
+    e.bien.etatGeneral = 'bon';
+    assert.equal(calculerTravaux(e).total.haut, 0);
   });
 });

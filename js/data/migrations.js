@@ -5,8 +5,14 @@ import { SCHEMA_VERSION, normaliserEstimation } from './schema.js';
 
 /** MIGRATIONS[n] transforme une estimation de la version n vers la version n + 1. */
 export const MIGRATIONS = {
-  // Exemple pour la suite :
-  // 1: (e) => { e.nouveauChamp = valeurParDefaut; return e; },
+  // v1 → v2 : ajout du mode de saisie (rapide / détaillé) et de l'état général du bien.
+  // Les estimations existantes ont été saisies en détail.
+  1: (e) => {
+    e.mode = 'detaille';
+    e.bien.etatGeneral ??= 'renover';
+    e.bien.modeGeneral ??= 'artisan';
+    return e;
+  },
 };
 
 export class ErreurMigration extends Error {}

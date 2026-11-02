@@ -13,6 +13,11 @@ export const ETAPES = [
   { id: 'synthese', libelle: 'Synthèse' },
 ];
 
+/** Étapes affichées selon le mode de l'estimation. */
+export function etapesPour(mode = 'detaille') {
+  return mode === 'rapide' ? ETAPES.filter((e) => e.id === 'bien' || e.id === 'synthese') : ETAPES;
+}
+
 const ID_VALIDE = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Analyse un hash d'URL et renvoie la route correspondante. */
@@ -56,7 +61,8 @@ export function lien(route) {
 }
 
 /** Étapes précédente et suivante, pour la navigation en bas d'écran. */
-export function voisines(etape) {
-  const i = ETAPES.findIndex((e) => e.id === etape);
-  return { precedente: ETAPES[i - 1] ?? null, suivante: ETAPES[i + 1] ?? null };
+export function voisines(etape, mode = 'detaille') {
+  const liste = etapesPour(mode);
+  const i = liste.findIndex((e) => e.id === etape);
+  return { precedente: liste[i - 1] ?? null, suivante: liste[i + 1] ?? null };
 }

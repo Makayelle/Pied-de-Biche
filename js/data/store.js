@@ -34,8 +34,8 @@ export async function enregistrerReglages(r) {
   await db.ecrire('meta', r, 'reglages');
 }
 
-export function creer() {
-  const e = creerEstimation({ reglages: structuredClone(reglages()) });
+export function creer(mode = 'detaille') {
+  const e = creerEstimation({ reglages: structuredClone(reglages()), mode });
   estimations.set(e.id, e);
   ecrireMaintenant(e.id);
   return e;

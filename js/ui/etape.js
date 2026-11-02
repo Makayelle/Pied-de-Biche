@@ -1,10 +1,10 @@
 // Écrans de saisie d'une estimation (contenu réel au jalon J3).
 import { h, picto, format } from './dom.js';
-import { ETAPES, lien, voisines } from '../router.js';
+import { etapesPour, lien, voisines } from '../router.js';
 
-export function barreEtapes(id, etapeCourante) {
+export function barreEtapes(id, etapeCourante, mode) {
   return h('nav', { class: 'etapes', 'aria-label': 'Étapes de l’estimation' },
-    h('ol', {}, ETAPES.map((e, i) =>
+    h('ol', {}, etapesPour(mode).map((e, i) =>
       h('li', {},
         h('a', {
           href: lien({ ecran: 'estimation', id, etape: e.id }),
@@ -15,8 +15,8 @@ export function barreEtapes(id, etapeCourante) {
   );
 }
 
-export function navigationEtapes({ id, etape }) {
-  const { precedente, suivante } = voisines(etape);
+export function navigationEtapes({ id, etape }, mode) {
+  const { precedente, suivante } = voisines(etape, mode);
   return h('div', { class: 'navigation-etapes' },
       precedente
         ? h('a', { class: 'bouton bouton--secondaire', href: lien({ ecran: 'estimation', id, etape: precedente.id }) },

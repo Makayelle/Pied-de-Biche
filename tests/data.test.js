@@ -33,7 +33,29 @@ describe('migrations', () => {
     assert.deepEqual(migrer(e), e);
   });
 
-  test('le schéma courant est 1', () => assert.equal(SCHEMA_VERSION, 1));
+  test('le schéma courant est 2', () => assert.equal(SCHEMA_VERSION, 2));
+
+  test('migration v1 → v2 : une estimation existante passe en mode détaillé', () => {
+    const v1 = exemple();
+    v1.schemaVersion = 1;
+    delete v1.mode;
+    delete v1.bien.etatGeneral;
+    delete v1.bien.modeGeneral;
+    const v2 = migrer(v1);
+    assert.equal(v2.schemaVersion, 2);
+    assert.equal(v2.mode, 'detaille');
+    assert.equal(v2.bien.etatGeneral, 'renover');
+    assert.equal(calculerEstimation(v2).scenarios.central.margeNette, calculerEstimation(exemple()).scenarios.central.margeNette);
+  });
+
+  test('un fichier exporté en v1 se réimporte (migration à l\u2019import)', async () => {
+    const v1 = exemple();
+    v1.schemaVersion = 1;
+    delete v1.mode;
+    const r = analyserImport(await construireExport({ estimations: [v1] }));
+    assert.equal(r.estimations[0].schemaVersion, 2);
+    assert.equal(r.estimations[0].mode, 'detaille');
+  });
 
   test('applique les migrations dans l’ordre sans modifier la source', () => {
     const source = { schemaVersion: 1, a: 1 };

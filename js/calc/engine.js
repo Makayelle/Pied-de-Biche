@@ -54,7 +54,7 @@ export function coutPoste(poste, bien, reglages) {
 export function calculerTravaux(estimation) {
   const { reglages, bien } = estimation;
 
-  const lignes = [
+  const lignes = estimation.mode === 'rapide' ? lignesRapides(estimation) : [
     ...estimation.pieces.map((p) => ({
       id: p.id, categorie: 'piece',
       libelle: p.nom || TYPES_PIECES.find((t) => t.id === p.type)?.libelle || 'Pièce',
@@ -80,6 +80,22 @@ export function calculerTravaux(estimation) {
   return { lignes, sousTotal, aleas, total, dommagesOuvrage, dommagesOuvrageActive: doActive };
 }
 
+/**
+ * Estimation rapide : une seule ligne, surface habitable × prix au m² de l'état général
+ * (grille des pièces), avec le coefficient matériaux si « Nous-mêmes ».
+ */
+function lignesRapides(estimation) {
+  const { bien, reglages } = estimation;
+  const prix = reglages.grille.pieces[bien.etatGeneral];
+  if (!prix) return [];
+  const surface = n(bien.surfaceHabitable);
+  const coef = coefMode(bien.modeGeneral, 'pieces', reglages);
+  return [{
+    id: 'global', categorie: 'global', libelle: 'Rénovation globale',
+    ...parFourchette((f) => surface * prix[f] * coef),
+  }];
+}
+
 // ---------------------------------------------------------------------------
 // 7.2 Coût de revient
 // ---------------------------------------------------------------------------
@@ -96,6 +112,11 @@ export function coutFinancement(financement, dureeMois, regime, reglages) {
     ? Math.min(capital * taux * (reglages.ira.moisInterets / 12), capital * reglages.ira.plafondCapital)
     : 0;
   return { interets, assurance, frais, ira, total: interets + assurance + frais + ira };
+}
+
+/** Prix d'achat retenu : le prix négocié s'il est saisi, sinon le prix affiché. */
+export function prixAchatEffectif(estimation) {
+  return n(estimation.bien.prixAchat) || n(estimation.bien.prixAffiche);
 }
 
 /** Coûts de portage sur la durée. */
@@ -153,8 +174,11 @@ export function parametresScenarios(estimation) {
 /**
  * Calcule un scénario. `prixAchat` peut être forcé (utilisé par le calcul inverse du prix maximum).
  */
-export function calculerScenario(estimation, params, travaux = calculerTravaux(estimation), prixAchat = n(estimation.bien.prixAchat)) {
-  const { reglages, regime, financement } = estimation;
+export function calculerScenario(estimation, params, travaux = calculerTravaux(estimation), prixAchat = prixAchatEffectif(estimation)) {
+  const { reglages, regime } = estimation;
+  // Estimation rapide : ni financement ni portage (ordre de grandeur « à la louche »).
+  const rapide = estimation.mode === 'rapide';
+  const financement = rapide ? {} : estimation.financement;
   const { fourchette, prixRevente, dureeMois } = params;
 
   const acquisition = prixAchat * reglages.fraisAcquisition[regime];
@@ -162,10 +186,10 @@ export function calculerScenario(estimation, params, travaux = calculerTravaux(e
   const coutTravaux = travaux.total[fourchette];
   const dommagesOuvrage = travaux.dommagesOuvrage[fourchette];
   const fin = coutFinancement(financement, dureeMois, regime, reglages);
-  const port = coutPortage(estimation.portage, dureeMois);
+  const port = coutPortage(rapide ? {} : estimation.portage, dureeMois);
 
   const coutRevient = prixAchat + acquisition + agenceAcquereur + coutTravaux + dommagesOuvrage + fin.total + port.total;
-  const vente = fraisVente(estimation.revente, prixRevente, regime);
+  const vente = fraisVente(rapide ? { fraisAgencePct: estimation.revente.fraisAgencePct } : estimation.revente, prixRevente, regime);
   const margeBrute = prixRevente - vente.total - coutRevient;
   const nette = margeNette(margeBrute, regime);
 
@@ -214,6 +238,19 @@ export function prixAchatMax(estimation, params, travaux = calculerTravaux(estim
   return bas;
 }
 
+/**
+ * Budget travaux maximum (aléas et dommages-ouvrage compris) pour atteindre la marge cible
+ * au prix d'achat retenu. Peut être négatif : le prix d'achat seul empêche déjà la cible.
+ * RP : marge nette = marge brute, donc la relation est linéaire.
+ */
+export function budgetTravauxMax(estimation, scenario) {
+  const cible = estimation.reglages.objectifs.margeCible;
+  if (scenario.prixRevente <= 0) return null;
+  const coutRevientCible = (scenario.prixRevente - scenario.detail.fraisVente.total) / (1 + cible);
+  const horsTravaux = scenario.coutRevient - scenario.detail.travaux - scenario.detail.dommagesOuvrage;
+  return coutRevientCible - horsTravaux;
+}
+
 /** Verdict de la pastille : 'ok' (vert), 'vigilance' (orange), 'alerte' (rouge) ou 'incomplet'. */
 export function verdict(pctCoutRevient, objectifs) {
   if (pctCoutRevient == null) return 'incomplet';
@@ -226,7 +263,8 @@ export function verdict(pctCoutRevient, objectifs) {
 export function calculerEstimation(estimation) {
   const travaux = calculerTravaux(estimation);
   const params = parametresScenarios(estimation);
-  const complet = n(estimation.bien.prixAchat) > 0 && prixReventeBase(estimation) > 0;
+  const avecRevente = prixReventeBase(estimation) > 0;
+  const complet = prixAchatEffectif(estimation) > 0 && avecRevente;
 
   const scenarios = {};
   for (const [nom, p] of Object.entries(params)) {
@@ -239,7 +277,12 @@ export function calculerEstimation(estimation) {
     complet,
     travaux,
     scenarios,
-    prixAchatMax: complet ? prixAchatMax(estimation, params.central, travaux) : null,
+    prixAchatRetenu: prixAchatEffectif(estimation),
+    prixNegocie: n(estimation.bien.prixAchat) > 0,
+    // Préconisations : utiles même sans prix d'achat (seule la revente est nécessaire).
+    prixAchatMax: avecRevente ? prixAchatMax(estimation, params.central, travaux) : null,
+    prixAchatMaxPrudent: avecRevente ? prixAchatMax(estimation, params.pessimiste, travaux) : null,
+    budgetTravauxMax: complet ? budgetTravauxMax(estimation, scenarios.central) : null,
     remunerationHoraire: heures > 0 ? scenarios.central.margeNette / heures : null,
   };
 }

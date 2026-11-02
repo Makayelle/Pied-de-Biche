@@ -369,3 +369,6 @@ Les réglages fiscaux doivent être clairement présentés comme **« à vérifi
 | 7 | TVA en MDB | Hors périmètre v1 (prix TTC, revente d'ancien supposée exonérée), mention sur la fiche. |
 | 8 | Flat tax | **31,4 %** (2026), réglage modifiable « à vérifier chaque année ». |
 | 9 | Périmètre v1 | **Régime RP uniquement.** Le modèle de données garde un champ `regime` (valeur `RP`) et le moteur est découpé pour accueillir le MDB plus tard sans migration cassante. |
+| 10 | Prix d'achat | Le « prix d'achat visé » devient un **prix négocié facultatif**. Sans lui, le calcul se fait sur le **prix affiché** ; la synthèse donne le prix d'achat maximum à viser. |
+| 11 | Modes d'estimation | **Rapide** (une page : surface, état général, réalisation, prix affiché, revente ; sans prêt ni portage) ou **Détaillée** (l'existant). Passage de l'un à l'autre sans perte. Schéma de données v2 (migration automatique). |
+| 12 | Préconisations | La synthèse indique le **prix d'achat à viser** (et sa version prudente) et le **budget travaux à ne pas dépasser** au prix retenu, pour la marge cible. |
