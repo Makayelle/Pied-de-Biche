@@ -1,7 +1,10 @@
 // Modèle de données d'une estimation. Toute évolution passe par une migration (js/data/migrations.js, jalon J4).
 import { reglagesParDefaut, REGLAGES_DEFAUT } from '../calc/defaults.js';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/** Modes de saisie : rapide (une page, « à la louche ») ou détaillé (pièces, postes, financement). */
+export const MODES = ['rapide', 'detaille'];
 
 /** Identifiant court, unique en pratique. */
 export function nouvelId(prefixe = 'e') {
@@ -11,7 +14,7 @@ export function nouvelId(prefixe = 'e') {
 }
 
 /** Estimation vierge, avec une copie des réglages courants. */
-export function creerEstimation({ reglages = reglagesParDefaut(), maintenant = new Date() } = {}) {
+export function creerEstimation({ reglages = reglagesParDefaut(), maintenant = new Date(), mode = 'detaille' } = {}) {
   const date = maintenant.toISOString();
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -20,12 +23,15 @@ export function creerEstimation({ reglages = reglagesParDefaut(), maintenant = n
     modifieLe: date,
     archive: false,
     regime: 'RP',
+    mode,
 
     bien: {
       adresse: '', commune: '', type: 'maison', anneeConstruction: null,
       surfaceHabitable: null, surfaceTerrain: null, nbPieces: null, nbNiveaux: null,
       dpe: 'inconnu', source: 'agence', contact: '',
       prixAffiche: null, prixAchat: null,
+      // Estimation rapide : état général du bien et mode de réalisation global.
+      etatGeneral: 'renover', modeGeneral: 'artisan',
       notes: '',
     },
 

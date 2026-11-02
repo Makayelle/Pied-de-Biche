@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyserRoute, lien, voisines, ETAPES } from '../js/router.js';
+import { analyserRoute, lien, voisines, etapesPour, ETAPES } from '../js/router.js';
 
 test('accueil pour un hash vide ou racine', () => {
   for (const h of ['', '#', '#/', '#//']) assert.deepEqual(analyserRoute(h), { ecran: 'accueil' });
@@ -42,4 +42,11 @@ test('lien() est l’inverse de analyserRoute()', () => {
 test('étapes voisines', () => {
   assert.deepEqual(voisines('bien'), { precedente: null, suivante: ETAPES[1] });
   assert.deepEqual(voisines('synthese'), { precedente: ETAPES[3], suivante: null });
+});
+
+test('mode rapide : deux étapes, le bien puis la synthèse', () => {
+  assert.deepEqual(etapesPour('rapide').map((e) => e.id), ['bien', 'synthese']);
+  assert.equal(voisines('bien', 'rapide').suivante.id, 'synthese');
+  assert.equal(voisines('synthese', 'rapide').precedente.id, 'bien');
+  assert.equal(etapesPour('detaille').length, 5);
 });

@@ -48,7 +48,7 @@ function carteEstimation({ e, r }, rerendre) {
       vignette,
       h('span', { class: 'estimation__corps' },
         h('span', { class: 'estimation__titre' }, titre),
-        h('span', { class: 'estimation__meta' }, [e.bien.commune, fmtDate.format(new Date(e.modifieLe))].filter(Boolean).join(' · ')),
+        h('span', { class: 'estimation__meta' }, [e.mode === 'rapide' ? 'Rapide' : null, e.bien.commune, fmtDate.format(new Date(e.modifieLe))].filter(Boolean).join(' · ')),
         h('span', { class: 'estimation__resultat' },
           h('span', { class: 'chiffre' }, r.complet ? format.euros(c.margeNette) : '—'),
           h('span', { class: `pastille pastille--${v === 'incomplet' ? 'neutre' : v}` }, LIBELLES_VERDICT[v]),
@@ -157,6 +157,24 @@ async function importerFichier(fichier, rerendre) {
   rerendre();
 }
 
+/** Choix du type d'estimation avant création. */
+async function nouvelleEstimation() {
+  const contenu = h('div', { class: 'choix-mode' },
+    h('p', {}, h('strong', {}, 'Rapide\u00a0: '), 'une seule page. Surface, état général, prix affiché et revente : la synthèse donne le prix à viser et le budget travaux à ne pas dépasser.'),
+    h('p', {}, h('strong', {}, 'Détaillée\u00a0: '), 'pièce par pièce, gros postes, prêt et portage. Pour affiner une affaire qui se confirme.'),
+    h('p', { class: 'champ__aide' }, 'Vous pourrez passer de l\u2019une à l\u2019autre à tout moment.'),
+  );
+  const mode = await demander({
+    titre: 'Nouvelle estimation', contenu,
+    boutons: [
+      { valeur: 'detaille', libelle: 'Détaillée' },
+      { valeur: 'rapide', libelle: 'Rapide', style: 'bouton--principal' },
+    ],
+  });
+  if (!mode) return;
+  location.hash = lien({ ecran: 'estimation', id: store.creer(mode).id, etape: 'bien' });
+}
+
 export function ecranAccueil({ rerendre }) {
   const liste = h('ul', { class: 'liste-estimations' });
   const nbArchives = store.nombreArchives();
@@ -186,7 +204,7 @@ export function ecranAccueil({ rerendre }) {
 
     affichage.archives ? null : h('button', {
       type: 'button', class: 'bouton bouton--principal bouton--large',
-      onclick: () => { location.hash = lien({ ecran: 'estimation', id: store.creer().id, etape: 'bien' }); },
+      onclick: nouvelleEstimation,
     }, picto('plus'), 'Nouvelle estimation'),
 
     aucune

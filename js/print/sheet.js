@@ -51,13 +51,13 @@ function entete(e, r) {
       h('h1', {}, b.adresse || 'Adresse non renseignée'),
       h('p', {}, [b.commune, `estimation du ${fmtDate.format(new Date(e.modifieLe))}`].filter(Boolean).join(' · ')),
     ),
-    h('div', { class: 'f-badges' }, h('span', { class: 'f-badge' }, 'Résidence principale'), verdictEl(r.scenarios.central.verdict)),
+    h('div', { class: 'f-badges' }, h('span', { class: 'f-badge' }, e.mode === 'rapide' ? 'RP · estimation rapide' : 'Résidence principale'), verdictEl(r.scenarios.central.verdict)),
   );
 }
 
 function chiffresCles(e, r) {
   const c = r.scenarios.central;
-  const visé = e.bien.prixAchat;
+  const visé = r.prixAchatRetenu;
   return h('section', { class: 'f-cles' },
     h('div', {}, h('span', {}, 'Marge nette (central)'), h('strong', {}, euros(r.complet ? c.margeNette : null))),
     h('div', {}, h('span', {}, '% du coût de revient'), h('strong', {}, pct(r.complet ? c.pctCoutRevient : null)),
@@ -91,7 +91,7 @@ function blocBien(e) {
       ligne('Année', val(b.anneeConstruction)),
       ligne('Source', SOURCES[b.source] ?? '—'),
       ligne('Prix affiché', euros(b.prixAffiche)),
-      ligne('Prix visé', euros(b.prixAchat)),
+      ligne('Prix négocié', euros(b.prixAchat)),
     ),
   );
 }
@@ -116,6 +116,32 @@ function blocFinancement(e, r) {
       ligne('Frais de vente', euros(d.fraisVente.total)),
       c.resteAFinancer > 0.5 ? ligne('Reste à financer', euros(c.resteAFinancer)) : null,
     ),
+  );
+}
+
+function libelleGlobal(e) {
+  const b = e.bien;
+  return ['Rénovation globale', b.surfaceHabitable ? format.surface(b.surfaceHabitable) : null,
+    ETATS.find((x) => x.id === b.etatGeneral)?.libelle, b.modeGeneral === 'nous' ? 'nous-mêmes' : 'artisan'].filter(Boolean).join(' · ');
+}
+
+/** Estimation rapide : préconisations à la place du financement. */
+function blocPreconisations(e, r) {
+  const c = r.scenarios.central;
+  const travaux = c.detail.travaux + c.detail.dommagesOuvrage;
+  const base = r.prixNegocie ? 'Prix négocié' : 'Prix affiché';
+  return h('section', { class: 'f-bloc f-financement' },
+    h('h2', {}, 'Préconisations'),
+    h('dl', { class: 'f-dl' },
+      ligne(base, euros(r.prixAchatRetenu || null)),
+      ligne(`Frais d\u2019acquisition (${pct(e.reglages.fraisAcquisition.RP)})`, euros(c.detail.fraisAcquisition)),
+      ligne('Travaux estimés (aléas compris)', euros(travaux)),
+      ligne('Frais de vente', euros(c.detail.fraisVente.total)),
+      ligne('Prix d\u2019achat à viser', euros(r.prixAchatMax)),
+      ligne('Prix prudent (pessimiste)', r.prixAchatMaxPrudent != null ? euros(Math.max(0, r.prixAchatMaxPrudent)) : '—'),
+      ligne('Budget travaux maximum', r.budgetTravauxMax == null ? '—' : r.budgetTravauxMax > 0 ? euros(r.budgetTravauxMax) : 'aucun'),
+    ),
+    h('p', { class: 'f-mention' }, 'Estimation rapide : sans prêt ni frais de portage.'),
   );
 }
 
@@ -164,7 +190,7 @@ function blocTravaux(e, r, niveau) {
         h('th', { class: 'f-num' }, 'Bas'), h('th', { class: 'f-num' }, 'Moyen'), h('th', { class: 'f-num' }, 'Haut'))),
       h('tbody', {}, lignes.length
         ? lignes.map((l) => h('tr', {},
-          h('td', {}, l.categorie === 'piece' && !l.groupe ? libellePiece(e, l) : l.libelle,
+          h('td', {}, l.categorie === 'global' ? libelleGlobal(e) : l.categorie === 'piece' && !l.groupe ? libellePiece(e, l) : l.libelle,
             !l.groupe && nousMemes(l) ? h('span', { class: 'f-struct' }, ' · nous-mêmes') : null,
             l.structurel ? h('span', { class: 'f-struct' }, ' · structurel') : null),
           ...montants(l)))
@@ -192,7 +218,7 @@ function blocSynthese(e, r) {
     h('h2', {}, 'Synthèse : trois scénarios'),
     h('table', { class: 'f-table' },
       h('thead', {}, h('tr', {}, h('th', {}, h('span', { class: 'visuellement-cache' }, 'Indicateur')), ...noms.map(([n, l]) => h('th', { class: `f-num${n === 'central' ? ' f-central' : ''}` },
-        l, h('span', { class: 'f-sous-titre' }, `travaux ${({ bas: 'bas', moyen: 'moyens', haut: 'hauts' })[s[n].fourchette]}, ${s[n].dureeMois} mois`))))),
+        l, h('span', { class: 'f-sous-titre' }, `travaux ${({ bas: 'bas', moyen: 'moyens', haut: 'hauts' })[s[n].fourchette]}${e.mode === 'rapide' ? '' : `, ${s[n].dureeMois} mois`}`))))),
       h('tbody', {},
         rangee('Coût de revient', (x) => euros(x.coutRevient)),
         rangee('Prix de revente', (x) => euros(x.prixRevente)),
@@ -232,7 +258,8 @@ export function construireFiche(e, photos = [], niveau = 0) {
     chiffresCles(e, r),
     (() => {
       const photosEl = blocPhotos(photos, niveau);
-      return h('div', { class: `f-colonnes${photosEl ? ' f-colonnes--3' : ''}` }, blocBien(e), blocFinancement(e, r), photosEl);
+      const droite = e.mode === 'rapide' ? blocPreconisations(e, r) : blocFinancement(e, r);
+      return h('div', { class: `f-colonnes${photosEl ? ' f-colonnes--3' : ''}` }, blocBien(e), droite, photosEl);
     })(),
     blocTravaux(e, r, niveau),
     blocSynthese(e, r),

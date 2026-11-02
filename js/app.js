@@ -1,5 +1,5 @@
 // Démarrage de l'application et aiguillage des écrans.
-import { analyserRoute, lien, ETAPES } from './router.js';
+import { analyserRoute, lien, ETAPES, etapesPour } from './router.js';
 import { monterCoquille } from './ui/shell.js';
 import { ecranAccueil } from './ui/accueil.js';
 import { navigationEtapes, barreEtapes, bandeauMarge } from './ui/etape.js';
@@ -67,11 +67,16 @@ function afficher({ conserverDefilement = false, focus = null } = {}) {
         vue = introuvable('Estimation introuvable');
         break;
       }
+      // Une estimation rapide n'a que deux étapes : on redirige les autres vers « Le bien ».
+      if (!etapesPour(estimation.mode).some((e) => e.id === route.etape)) {
+        location.replace(lien({ ecran: 'estimation', id: route.id, etape: 'bien' }));
+        return;
+      }
       const ctx = creerContexte(estimation, (o) => afficher({ conserverDefilement: true, ...o }));
       const etape = ETAPES.find((e) => e.id === route.etape);
       vue = {
-        contenu: [...ECRANS[route.etape](ctx), navigationEtapes(route)],
-        avant: barreEtapes(route.id, route.etape),
+        contenu: [...ECRANS[route.etape](ctx), navigationEtapes(route, estimation.mode)],
+        avant: barreEtapes(route.id, route.etape, estimation.mode),
         bandeau: bandeauMarge(ctx),
         titre: etape.libelle,
       };
