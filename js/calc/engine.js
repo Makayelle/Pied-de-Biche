@@ -2,7 +2,7 @@
 // Entrée : une estimation (cf. js/data/schema.js) et ses réglages. Sortie : un objet de résultats.
 // Montants en euros, non arrondis : l'arrondi est fait à l'affichage.
 
-import { FOURCHETTES, TYPES_PIECES } from './defaults.js';
+import { FOURCHETTES, TYPES_PIECES, REGLAGES_DEFAUT } from './defaults.js';
 
 /** Convertit une saisie en nombre fini ≥ 0 (champ vide ou invalide → 0). */
 export function n(v) {
@@ -18,18 +18,31 @@ const coefMode = (mode, categorie, reglages) => (mode === 'nous' ? reglages.coef
 // 7.1 Travaux
 // ---------------------------------------------------------------------------
 
-/** Coût d'une pièce pour chaque fourchette : surface × prix au m² de l'état + forfait d'équipement. */
-export function coutPiece(piece, reglages) {
-  const { grille } = reglages;
-  const prixEtat = grille.pieces[piece.etat]; // undefined pour « bon »
+/**
+ * Coût de l'équipement d'une pièce pour une fourchette.
+ * - complet : forfait de la grille (fourni-posé, coefficient « Nous-mêmes » appliqué) ;
+ * - partiel avec éléments cochés : somme des prix d'achat des éléments (sans coefficient) ;
+ * - partiel sans liste (estimations antérieures à la v0.8.0) : part réglable du forfait.
+ */
+export function coutEquipement(piece, reglages, f) {
   const typeEquip = TYPES_PIECES.find((t) => t.id === piece.type)?.equipement;
-  const forfait = typeEquip && piece.equipement !== 'aucun' ? grille.equipements[typeEquip] : null;
-  const partForfait = piece.equipement === 'partiel' ? reglages.coefEquipementPartiel : 1;
+  const forfait = typeEquip ? reglages.grille.equipements[typeEquip] : null;
+  if (!forfait || piece.equipement === 'aucun') return 0;
+  const coef = coefMode(piece.mode, 'equipements', reglages);
+  if (piece.equipement === 'complet') return forfait[f] * coef;
+  if (Array.isArray(piece.elements)) {
+    const elements = forfait.elements ?? REGLAGES_DEFAUT.grille.equipements[typeEquip].elements;
+    return piece.elements.reduce((t, cle) => t + n(elements[cle]?.[f]), 0);
+  }
+  return forfait[f] * reglages.coefEquipementPartiel * coef;
+}
 
+/** Coût d'une pièce pour chaque fourchette : surface × prix au m² de l'état + équipement. */
+export function coutPiece(piece, reglages) {
+  const prixEtat = reglages.grille.pieces[piece.etat]; // undefined pour « bon »
   return parFourchette((f) => {
     const surface = prixEtat ? n(piece.surface) * prixEtat[f] * coefMode(piece.mode, 'pieces', reglages) : 0;
-    const equipement = forfait ? forfait[f] * partForfait * coefMode(piece.mode, 'equipements', reglages) : 0;
-    return surface + equipement;
+    return surface + coutEquipement(piece, reglages, f);
   });
 }
 

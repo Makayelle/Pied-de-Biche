@@ -51,11 +51,40 @@ export const REGLAGES_DEFAUT = gelerProfond({
       renover: f(250, 450, 700),
       refaire: f(700, 1100, 1600),
     },
-    // Forfaits d'équipement
+    // Forfaits d'équipement (« complet »). En « partiel », on coche les éléments à acheter :
+    // leurs prix sont des prix d'ACHAT (le coefficient « Nous-mêmes » ne s'y applique pas).
     equipements: {
-      cuisine: { libelle: 'Cuisine équipée', ...f(4000, 8000, 15000) },
-      sdb: { libelle: 'Salle de bain complète', ...f(5000, 9000, 15000) },
-      wc: { libelle: 'WC', ...f(1500, 2500, 4000) },
+      cuisine: {
+        libelle: 'Cuisine équipée', ...f(4000, 8000, 15000),
+        elements: {
+          plaque: { libelle: 'Plaque de cuisson', ...f(250, 450, 900) },
+          four: { libelle: 'Four', ...f(250, 450, 900) },
+          hotte: { libelle: 'Hotte', ...f(120, 300, 700) },
+          refrigerateur: { libelle: 'Réfrigérateur', ...f(350, 700, 1500) },
+          congelateur: { libelle: 'Congélateur', ...f(250, 450, 800) },
+          laveVaisselle: { libelle: 'Lave-vaisselle', ...f(300, 500, 900) },
+          microOndes: { libelle: 'Micro-ondes', ...f(80, 150, 350) },
+          laveLinge: { libelle: 'Lave-linge', ...f(300, 500, 900) },
+        },
+      },
+      sdb: {
+        libelle: 'Salle de bain complète', ...f(5000, 9000, 15000),
+        elements: {
+          douche: { libelle: 'Douche (receveur, paroi, colonne)', ...f(400, 900, 2000) },
+          baignoire: { libelle: 'Baignoire', ...f(250, 600, 1500) },
+          meubleVasque: { libelle: 'Meuble vasque et miroir', ...f(250, 600, 1500) },
+          robinetterie: { libelle: 'Robinetterie', ...f(100, 250, 600) },
+          secheServiettes: { libelle: 'Sèche-serviettes', ...f(150, 350, 800) },
+        },
+      },
+      wc: {
+        libelle: 'WC', ...f(1500, 2500, 4000),
+        elements: {
+          cuvette: { libelle: 'WC à poser', ...f(150, 300, 600) },
+          suspendu: { libelle: 'WC suspendu (avec bâti)', ...f(400, 700, 1200) },
+          laveMains: { libelle: 'Lave-mains', ...f(100, 250, 500) },
+        },
+      },
     },
     // Gros postes (l'ordre des clés est l'ordre d'affichage)
     postes: {
@@ -104,6 +133,18 @@ export const REGLAGES_DEFAUT = gelerProfond({
 function gelerProfond(o) {
   for (const v of Object.values(o)) if (v && typeof v === 'object') gelerProfond(v);
   return Object.freeze(o);
+}
+
+/**
+ * Complète des réglages enregistrés avant l'ajout des éléments d'équipement (v0.8.0)
+ * avec les éléments par défaut. Ne modifie jamais un prix existant.
+ */
+export function completerReglages(r) {
+  for (const [cle, eq] of Object.entries(REGLAGES_DEFAUT.grille.equipements)) {
+    const cible = r?.grille?.equipements?.[cle];
+    if (cible && !cible.elements) cible.elements = structuredClone(eq.elements);
+  }
+  return r;
 }
 
 /** Copie profonde et modifiable des réglages par défaut. */

@@ -1,5 +1,5 @@
 // Modèle de données d'une estimation. Toute évolution passe par une migration (js/data/migrations.js, jalon J4).
-import { reglagesParDefaut, REGLAGES_DEFAUT } from '../calc/defaults.js';
+import { reglagesParDefaut, completerReglages, REGLAGES_DEFAUT } from '../calc/defaults.js';
 
 export const SCHEMA_VERSION = 3;
 
@@ -84,7 +84,8 @@ function completer(cible, modele) {
  * complète les pièces et ajoute les gros postes absents de la liste.
  */
 export function normaliserEstimation(e) {
-  const modele = creerEstimation({ reglages: e.reglages ?? reglagesParDefaut() });
+  e.reglages = completerReglages(e.reglages ?? reglagesParDefaut());
+  const modele = creerEstimation({ reglages: e.reglages });
   delete modele.id;
   completer(e, modele);
   e.pieces = e.pieces.map((p) => completer(p, { ...creerPiece(p.type ?? 'autre'), id: p.id ?? nouvelId('p') }));
@@ -97,7 +98,8 @@ export function normaliserEstimation(e) {
 export function creerPiece(type = 'sejour') {
   return {
     id: nouvelId('p'), nom: '', type, surface: null, etat: 'rafraichir',
-    equipement: 'aucun', mode: 'artisan', note: '',
+    // Équipement « partiel » : clés des éléments à acheter (cf. grille.equipements.<type>.elements).
+    equipement: 'aucun', elements: [], mode: 'artisan', note: '',
   };
 }
 

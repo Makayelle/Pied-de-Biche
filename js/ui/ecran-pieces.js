@@ -1,6 +1,6 @@
 // Étape 2 — Pièces : liste dynamique avec état, équipement et mode de réalisation.
 import { h, picto, format } from './dom.js';
-import { champNombre, champTexte, choix, duo, legendeObligatoire } from './composants.js';
+import { champNombre, champTexte, choix, cases, duo, legendeObligatoire } from './composants.js';
 import { ETATS, TYPES_PIECES } from '../calc/defaults.js';
 import { creerPiece } from '../data/schema.js';
 import { galeriePhotos } from './photos.js';
@@ -34,6 +34,21 @@ export function sortieCout(ctx, calcul) {
   return h('p', { class: 'cout' }, central, plage);
 }
 
+/** Équipement « partiel » : choix des éléments à acheter, chiffrés au prix d'achat moyen de la grille. */
+function elementsAAcheter(ctx, piece, type) {
+  const elements = ctx.estimation.reglages.grille.equipements[type.equipement].elements ?? {};
+  const ancien = !Array.isArray(piece.elements);
+  return cases({
+    libelle: 'Éléments à acheter',
+    aide: ancien
+      ? `Aucun élément choisi : l’équipement partiel compte pour ${format.pourcent(ctx.estimation.reglages.coefEquipementPartiel)} du forfait complet. Cochez les éléments pour affiner.`
+      : 'Prix d’achat (fourchette de la grille), sans pose.',
+    options: Object.entries(elements).map(([cle, el]) => ({ valeur: cle, libelle: `${el.libelle} · ${format.euros(el.moyen)}` })),
+    valeurs: ancien ? [] : piece.elements,
+    onChange: (v) => ctx.changer(() => { piece.elements = v; }, ancien ? { structure: true } : undefined),
+  });
+}
+
 function cartePiece(ctx, piece) {
   const p = (cle, opts) => ctx.poser(piece, cle, opts);
   const type = TYPES_PIECES.find((t) => t.id === piece.type);
@@ -63,8 +78,9 @@ function cartePiece(ctx, piece) {
     ),
     choix({ libelle: 'État', options: ETATS.map((e) => ({ valeur: e.id, libelle: e.libelle })), valeur: piece.etat, onChange: p('etat') }),
     type.equipement
-      ? choix({ libelle: `Équipement ${type.libelle.toLowerCase()}`, options: EQUIPEMENTS, valeur: piece.equipement, onChange: p('equipement') })
+      ? choix({ libelle: 'Équipement à acheter', options: EQUIPEMENTS, valeur: piece.equipement, onChange: p('equipement', { structure: true }) })
       : null,
+    type.equipement && piece.equipement === 'partiel' ? elementsAAcheter(ctx, piece, type) : null,
     choix({ libelle: 'Réalisation', options: MODES, valeur: piece.mode, onChange: p('mode') }),
     champTexte({ libelle: 'Note', valeur: piece.note, onChange: p('note') }),
     galeriePhotos(ctx, piece.id),
