@@ -1,14 +1,14 @@
 // Écran Réglages : grille de prix, coefficients, frais, objectifs, affichage, sauvegarde.
 // Les modifications s'appliquent aux NOUVELLES estimations ; une estimation existante garde
 // sa copie des réglages, sauf action explicite « Recalculer avec les réglages actuels ».
-import { h, picto } from './dom.js';
+import { h, picto, format } from './dom.js';
 import { champNombre, choix, interrupteur } from './composants.js';
 import { confirmer, notifier } from './dialogue.js';
 import { exporterTout, exporterReglages } from './partage.js';
 import { choisirTheme } from './theme.js';
 import { afficherAccueilDemarrage } from './demarrage.js';
 import { APP_VERSION } from '../version.js';
-import { reglagesParDefaut, ETATS, UNITES } from '../calc/defaults.js';
+import { reglagesParDefaut, ETATS, UNITES, CATEGORIES_ELEMENTS, prixElements } from '../calc/defaults.js';
 import * as store from '../data/store.js';
 
 const THEMES = [
@@ -54,6 +54,32 @@ function section(titre, ouvert, ...contenu) {
     h('div', { class: 'repli__contenu' }, ...contenu));
 }
 
+/** Bloc repliable d'un équipement : éléments par catégorie, pose, total complet artisan. */
+function equipementReglages(eq, r) {
+  const total = h('p', { class: 'champ__aide' });
+  const majTotal = () => {
+    const tous = Object.keys(eq.elements);
+    const t = (f) => format.euros(prixElements(eq, tous, f) + (eq.pose[f] ?? 0));
+    total.textContent = `Complet artisan : ${t('bas')} / ${t('moyen')} / ${t('haut')} (bas / moyen / haut).`;
+  };
+  majTotal();
+  const parCategorie = CATEGORIES_ELEMENTS
+    .map((cat) => [cat, Object.values(eq.elements).filter((el) => el.categorie === cat.id)])
+    .filter(([, els]) => els.length);
+  // Les champs enregistrent à la sortie : le total est recalculé juste après.
+  return h('details', { class: 'repli repli--imbrique', onfocusout: () => setTimeout(majTotal) },
+    h('summary', { class: 'repli__titre' }, eq.libelle),
+    h('div', { class: 'repli__contenu' },
+      total,
+      ...parCategorie.flatMap(([cat, els]) => [
+        h('h3', { class: 'trio__categorie' }, cat.libelle),
+        ...els.map((el) => trio(el.libelle, el, 'prix d’achat', r)),
+      ]),
+      h('h3', { class: 'trio__categorie' }, 'Pose'),
+      trio('Pose et raccordements', eq.pose, 'fourni-posé', r),
+    ));
+}
+
 export function ecranReglages({ rerendre }) {
   const r = structuredClone(store.reglages());
   const g = r.grille;
@@ -67,16 +93,11 @@ export function ecranReglages({ rerendre }) {
       ...ETATS.filter((e) => e.id !== 'bon').map((e) => trio(e.libelle, g.pieces[e.id], '€/m² de pièce', r)),
     ),
 
-    section('Grille : équipements (forfaits)', false,
-      ...Object.values(g.equipements).map((eq) => trio(eq.libelle, eq, 'forfait complet', r)),
-      ...Object.values(g.equipements).map((eq) => h('details', { class: 'repli repli--imbrique' },
-        h('summary', { class: 'repli__titre' }, `${eq.libelle} : éléments à acheter`),
-        h('div', { class: 'repli__contenu' },
-          h('p', { class: 'champ__aide' }, 'Équipement « partiel » : prix d’achat de chaque élément, sans pose.'),
-          ...Object.values(eq.elements ?? {}).map((el) => trio(el.libelle, el, 'prix d’achat', r)),
-        ))),
+    section('Grille : équipements', false,
+      h('p', { class: 'champ__aide' }, 'Complet = éléments (prix d’achat, plein tarif dans les deux modes) + pose et raccordements (fourni-posé artisan). En « Nous-mêmes », seule la pose est réduite (coefficients de pose ci-dessous). En « Partiel », la pose est comptée au prorata des éléments cochés.'),
+      ...Object.values(g.equipements).map((eq) => equipementReglages(eq, r)),
       pourcent('Équipement « partiel » sans élément choisi', r, 'coefEquipementPartiel', r,
-        'Part du forfait complet, pour les estimations créées avant le choix des éléments'),
+        'Part du complet, pour les estimations créées avant le choix des éléments'),
     ),
 
     section('Grille : gros postes', false,
@@ -88,9 +109,14 @@ export function ecranReglages({ rerendre }) {
       h('p', { class: 'champ__aide' }, 'Mode « Nous-mêmes » : part du prix artisan correspondant aux matériaux seuls.'),
       h('div', { class: 'duo' },
         pourcent('Matériaux : pièces', r.coefMateriaux, 'pieces', r),
-        pourcent('Matériaux : équipements', r.coefMateriaux, 'equipements', r),
+        pourcent('Matériaux : gros postes', r.coefMateriaux, 'postes', r),
       ),
-      pourcent('Matériaux : gros postes', r.coefMateriaux, 'postes', r),
+      h('p', { class: 'champ__aide' }, 'Pose et raccordements des équipements : part fournitures (raccords, câbles, joints, carrelage…).'),
+      h('div', { class: 'duo' },
+        pourcent('Pose : cuisine', r.coefMateriaux.pose, 'cuisine', r),
+        pourcent('Pose : salle de bain', r.coefMateriaux.pose, 'sdb', r),
+      ),
+      pourcent('Pose : WC', r.coefMateriaux.pose, 'wc', r),
       h('div', { class: 'duo' },
         pourcent('Aléas', r, 'aleas', r, 'Sur le total des travaux'),
         pourcent('Dommages-ouvrage', r.dommagesOuvrage, 'taux', r, 'Des travaux'),

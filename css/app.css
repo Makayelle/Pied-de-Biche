@@ -548,6 +548,10 @@ textarea.champ__saisie { resize: vertical; min-height: 6rem; }
 .choix-mode p { margin-bottom: var(--e-3); color: var(--c-texte-doux); }
 .choix-mode strong { color: var(--c-texte); }
 
-/* Réglages : éléments d'équipement, repliés sous les forfaits. */
+/* Réglages : un bloc repliable par équipement, éléments regroupés par catégorie. */
 .repli--imbrique { border-top: 1px solid var(--c-bordure); margin: 0 calc(-1 * var(--e-5)); }
 .repli--imbrique > .repli__titre { font-size: var(--t-s); }
+.trio__categorie { font-size: var(--t-s); font-weight: 700; color: var(--c-texte-doux); margin: var(--e-4) 0 0; }
+
+/* Pièces : éléments d'équipement à acheter (équipement « partiel »). */
+.elements-equipement > .choix { margin-top: var(--e-3); }

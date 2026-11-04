@@ -51,39 +51,50 @@ export const REGLAGES_DEFAUT = gelerProfond({
       renover: f(250, 450, 700),
       refaire: f(700, 1100, 1600),
     },
-    // Forfaits d'équipement (« complet »). En « partiel », on coche les éléments à acheter :
-    // leurs prix sont des prix d'ACHAT (le coefficient « Nous-mêmes » ne s'y applique pas).
+    // Équipements (cuisine, salle de bain, WC). Le prix « complet » se décompose en trois parts :
+    //   électroménager ou sanitaires + mobilier : prix d'ACHAT des éléments, payés plein tarif dans les deux modes ;
+    //   pose et raccordements : fourni-posé artisan ; en « Nous-mêmes », seule la part fournitures
+    //   (coefMateriaux.pose, par pièce) est comptée.
+    // En « partiel », on coche les éléments à acheter (sans pose).
+    // `groupe` : éléments exclusifs (une seule cuvette de WC) ; pour le « complet », on compte le plus cher.
     equipements: {
       cuisine: {
-        libelle: 'Cuisine équipée', ...f(4000, 8000, 15000),
+        libelle: 'Cuisine équipée',
         elements: {
-          plaque: { libelle: 'Plaque de cuisson', ...f(250, 450, 900) },
-          four: { libelle: 'Four', ...f(250, 450, 900) },
-          hotte: { libelle: 'Hotte', ...f(120, 300, 700) },
-          refrigerateur: { libelle: 'Réfrigérateur', ...f(350, 700, 1500) },
-          congelateur: { libelle: 'Congélateur', ...f(250, 450, 800) },
-          laveVaisselle: { libelle: 'Lave-vaisselle', ...f(300, 500, 900) },
-          microOndes: { libelle: 'Micro-ondes', ...f(80, 150, 350) },
-          laveLinge: { libelle: 'Lave-linge', ...f(300, 500, 900) },
+          plaque: { libelle: 'Plaque de cuisson', categorie: 'electromenager', ...f(250, 450, 900) },
+          four: { libelle: 'Four', categorie: 'electromenager', ...f(250, 450, 900) },
+          hotte: { libelle: 'Hotte', categorie: 'electromenager', ...f(120, 300, 700) },
+          refrigerateur: { libelle: 'Réfrigérateur', categorie: 'electromenager', ...f(350, 700, 1500) },
+          congelateur: { libelle: 'Congélateur', categorie: 'electromenager', ...f(250, 450, 800) },
+          laveVaisselle: { libelle: 'Lave-vaisselle', categorie: 'electromenager', ...f(300, 500, 900) },
+          microOndes: { libelle: 'Micro-ondes', categorie: 'electromenager', ...f(80, 150, 350) },
+          laveLinge: { libelle: 'Lave-linge', categorie: 'electromenager', ...f(300, 500, 900) },
+          meubles: { libelle: 'Meubles et plan de travail', categorie: 'mobilier', ...f(1500, 3000, 6000) },
         },
+        // Complet artisan : 4 000 / 8 000 / 15 000 €.
+        pose: f(600, 1500, 2050),
       },
       sdb: {
-        libelle: 'Salle de bain complète', ...f(5000, 9000, 15000),
+        libelle: 'Salle de bain complète',
         elements: {
-          douche: { libelle: 'Douche (receveur, paroi, colonne)', ...f(400, 900, 2000) },
-          baignoire: { libelle: 'Baignoire', ...f(250, 600, 1500) },
-          meubleVasque: { libelle: 'Meuble vasque et miroir', ...f(250, 600, 1500) },
-          robinetterie: { libelle: 'Robinetterie', ...f(100, 250, 600) },
-          secheServiettes: { libelle: 'Sèche-serviettes', ...f(150, 350, 800) },
+          douche: { libelle: 'Douche (receveur, paroi, colonne)', categorie: 'sanitaire', ...f(400, 900, 2000) },
+          baignoire: { libelle: 'Baignoire', categorie: 'sanitaire', ...f(250, 600, 1500) },
+          robinetterie: { libelle: 'Robinetterie', categorie: 'sanitaire', ...f(100, 250, 600) },
+          secheServiettes: { libelle: 'Sèche-serviettes', categorie: 'sanitaire', ...f(150, 350, 800) },
+          meubleVasque: { libelle: 'Meuble vasque et miroir', categorie: 'mobilier', ...f(250, 600, 1500) },
         },
+        // Complet artisan : 5 000 / 9 000 / 15 000 € (pose : carrelage, étanchéité, plomberie compris).
+        pose: f(3850, 6300, 8600),
       },
       wc: {
-        libelle: 'WC', ...f(1500, 2500, 4000),
+        libelle: 'WC',
         elements: {
-          cuvette: { libelle: 'WC à poser', ...f(150, 300, 600) },
-          suspendu: { libelle: 'WC suspendu (avec bâti)', ...f(400, 700, 1200) },
-          laveMains: { libelle: 'Lave-mains', ...f(100, 250, 500) },
+          cuvette: { libelle: 'WC à poser', categorie: 'sanitaire', groupe: 'cuvette', ...f(150, 300, 600) },
+          suspendu: { libelle: 'WC suspendu (avec bâti)', categorie: 'sanitaire', groupe: 'cuvette', ...f(400, 700, 1200) },
+          laveMains: { libelle: 'Lave-mains', categorie: 'sanitaire', ...f(100, 250, 500) },
         },
+        // Complet artisan (WC suspendu) : 1 500 / 2 500 / 4 000 €.
+        pose: f(1000, 1550, 2300),
       },
     },
     // Gros postes (l'ordre des clés est l'ordre d'affichage)
@@ -109,8 +120,9 @@ export const REGLAGES_DEFAUT = gelerProfond({
   },
 
   // Mode « Nous-mêmes » : part du prix artisan correspondant aux matériaux seuls.
-  coefMateriaux: { pieces: 0.4, equipements: 0.4, postes: 0.4 },
-  // Équipement « partiel » : part du forfait complet.
+  // `pose` : part fournitures de la pose et des raccordements des équipements, par pièce.
+  coefMateriaux: { pieces: 0.4, postes: 0.4, pose: { cuisine: 0.2, sdb: 0.4, wc: 0.3 } },
+  // Équipement « partiel » sans élément choisi (estimations antérieures à la v0.8.0) : part du complet.
   coefEquipementPartiel: 0.5,
 
   aleas: 0.15,
@@ -135,14 +147,72 @@ function gelerProfond(o) {
   return Object.freeze(o);
 }
 
+/** Catégories d'éléments d'équipement, dans l'ordre d'affichage. */
+export const CATEGORIES_ELEMENTS = [
+  { id: 'electromenager', libelle: 'Électroménager' },
+  { id: 'sanitaire', libelle: 'Sanitaires' },
+  { id: 'mobilier', libelle: 'Mobilier' },
+];
+
+/** Groupes d'éléments exclusifs (un seul choix possible). */
+export const GROUPES_ELEMENTS = { cuvette: 'Cuvette' };
+
 /**
- * Complète des réglages enregistrés avant l'ajout des éléments d'équipement (v0.8.0)
- * avec les éléments par défaut. Ne modifie jamais un prix existant.
+ * Prix d'achat d'une liste d'éléments pour une fourchette.
+ * Dans un groupe exclusif, seul l'élément le plus cher est compté (jamais deux cuvettes).
+ */
+export function prixElements(equipement, cles, f) {
+  let total = 0;
+  const groupes = new Map();
+  for (const cle of cles) {
+    const el = equipement.elements?.[cle];
+    const prix = Number(el?.[f]);
+    if (!el || !Number.isFinite(prix) || prix <= 0) continue;
+    if (el.groupe) groupes.set(el.groupe, Math.max(groupes.get(el.groupe) ?? 0, prix));
+    else total += prix;
+  }
+  for (const prix of groupes.values()) total += prix;
+  return total;
+}
+
+/**
+ * Met un équipement au format actuel (v0.8.1) : éléments par défaut manquants, catégories,
+ * groupes et part « pose ». Un ancien forfait complet est conservé : la pose devient ce qui
+ * reste une fois les éléments payés. Ne modifie jamais un prix existant. Modifie `eq`.
+ */
+export function completerEquipement(eq, type) {
+  const defaut = REGLAGES_DEFAUT.grille.equipements[type];
+  eq.elements ??= {};
+  for (const [cle, el] of Object.entries(defaut.elements)) {
+    const cible = eq.elements[cle];
+    if (!cible) { eq.elements[cle] = structuredClone(el); continue; }
+    cible.categorie ??= el.categorie;
+    if (el.groupe) cible.groupe ??= el.groupe;
+  }
+  if (!eq.pose) {
+    const ancienForfait = FOURCHETTES.every((f) => typeof eq[f] === 'number');
+    const tous = Object.keys(eq.elements);
+    eq.pose = ancienForfait
+      ? Object.fromEntries(FOURCHETTES.map((f) => [f, Math.max(0, eq[f] - prixElements(eq, tous, f))]))
+      : structuredClone(defaut.pose);
+  }
+  for (const f of FOURCHETTES) delete eq[f];
+  return eq;
+}
+
+/**
+ * Complète des réglages enregistrés par une version antérieure (éléments d'équipement,
+ * part pose, coefficients de pose par pièce). Ne modifie jamais un prix existant.
  */
 export function completerReglages(r) {
-  for (const [cle, eq] of Object.entries(REGLAGES_DEFAUT.grille.equipements)) {
-    const cible = r?.grille?.equipements?.[cle];
-    if (cible && !cible.elements) cible.elements = structuredClone(eq.elements);
+  for (const type of Object.keys(REGLAGES_DEFAUT.grille.equipements)) {
+    const eq = r?.grille?.equipements?.[type];
+    if (eq) completerEquipement(eq, type);
+  }
+  if (r?.coefMateriaux) {
+    r.coefMateriaux.pose ??= structuredClone(REGLAGES_DEFAUT.coefMateriaux.pose);
+    // Ancien coefficient unique des équipements, remplacé par les coefficients de pose.
+    delete r.coefMateriaux.equipements;
   }
   return r;
 }

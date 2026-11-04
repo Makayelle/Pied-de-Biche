@@ -1,7 +1,7 @@
 // Étape 2 — Pièces : liste dynamique avec état, équipement et mode de réalisation.
 import { h, picto, format } from './dom.js';
 import { champNombre, champTexte, choix, cases, duo, legendeObligatoire } from './composants.js';
-import { ETATS, TYPES_PIECES } from '../calc/defaults.js';
+import { ETATS, TYPES_PIECES, CATEGORIES_ELEMENTS, GROUPES_ELEMENTS } from '../calc/defaults.js';
 import { creerPiece } from '../data/schema.js';
 import { galeriePhotos } from './photos.js';
 import { confirmer } from './dialogue.js';
@@ -34,19 +34,52 @@ export function sortieCout(ctx, calcul) {
   return h('p', { class: 'cout' }, central, plage);
 }
 
-/** Équipement « partiel » : choix des éléments à acheter, chiffrés au prix d'achat moyen de la grille. */
+/**
+ * Équipement « partiel » : choix des éléments à acheter, regroupés par catégorie.
+ * Les éléments exclusifs (cuvette de WC) sont un choix unique. Prix affichés : achat moyen de la grille.
+ */
 function elementsAAcheter(ctx, piece, type) {
-  const elements = ctx.estimation.reglages.grille.equipements[type.equipement].elements ?? {};
+  const r = ctx.estimation.reglages;
+  const elements = Object.entries(r.grille.equipements[type.equipement].elements ?? {});
   const ancien = !Array.isArray(piece.elements);
-  return cases({
-    libelle: 'Éléments à acheter',
-    aide: ancien
-      ? `Aucun élément choisi : l’équipement partiel compte pour ${format.pourcent(ctx.estimation.reglages.coefEquipementPartiel)} du forfait complet. Cochez les éléments pour affiner.`
-      : 'Prix d’achat (fourchette de la grille), sans pose.',
-    options: Object.entries(elements).map(([cle, el]) => ({ valeur: cle, libelle: `${el.libelle} · ${format.euros(el.moyen)}` })),
-    valeurs: ancien ? [] : piece.elements,
-    onChange: (v) => ctx.changer(() => { piece.elements = v; }, ancien ? { structure: true } : undefined),
-  });
+  const coches = ancien ? [] : piece.elements;
+  const libelle = (el) => `${el.libelle} · ${format.euros(el.moyen)}`;
+  // Remplace, dans la liste de la pièce, les éléments d'un sous-groupe par la nouvelle sélection.
+  const remplacer = (cles, selection) => ctx.changer(() => {
+    const actuels = Array.isArray(piece.elements) ? piece.elements : [];
+    piece.elements = [...actuels.filter((c) => !cles.includes(c)), ...selection];
+  }, ancien ? { structure: true } : undefined);
+
+  const blocs = [];
+  for (const [groupe, titre] of Object.entries(GROUPES_ELEMENTS)) {
+    const options = elements.filter(([, el]) => el.groupe === groupe);
+    if (!options.length) continue;
+    const cles = options.map(([cle]) => cle);
+    blocs.push(choix({
+      libelle: titre,
+      options: [{ valeur: '', libelle: 'Aucune' }, ...options.map(([cle, el]) => ({ valeur: cle, libelle: libelle(el) }))],
+      valeur: cles.find((c) => coches.includes(c)) ?? '',
+      onChange: (v) => remplacer(cles, v ? [v] : []),
+    }));
+  }
+  for (const cat of CATEGORIES_ELEMENTS) {
+    const options = elements.filter(([, el]) => el.categorie === cat.id && !el.groupe);
+    if (!options.length) continue;
+    const cles = options.map(([cle]) => cle);
+    blocs.push(cases({
+      libelle: cat.libelle,
+      options: options.map(([cle, el]) => ({ valeur: cle, libelle: libelle(el) })),
+      valeurs: coches.filter((c) => cles.includes(c)),
+      onChange: (v) => remplacer(cles, v),
+    }));
+  }
+
+  return h('div', { class: 'elements-equipement' },
+    h('p', { class: 'champ__aide' }, ancien
+      ? `Aucun élément choisi : l’équipement partiel compte pour ${format.pourcent(r.coefEquipementPartiel)} du complet. Cochez les éléments pour affiner.`
+      : 'Prix d’achat des éléments, plus la pose au prorata (fournitures seules en « Nous-mêmes »). Tout cocher revient au complet.'),
+    ...blocs,
+  );
 }
 
 function cartePiece(ctx, piece) {
