@@ -45,6 +45,22 @@ describe('migrations', () => {
     assert.equal(v3.bien.dpe, exemple().bien.dpe);
   });
 
+  test('migration v2 → v3 : l’équipement partiel existant garde son calcul', () => {
+    const v2 = exemple();
+    v2.schemaVersion = 2;
+    v2.pieces.push({ ...creerPiece('sdb'), surface: 6, etat: 'bon', equipement: 'partiel' });
+    for (const p of v2.pieces) delete p.elements;
+    for (const eq of Object.values(v2.reglages.grille.equipements)) delete eq.elements;
+    const avant = structuredClone(v2);
+    const v3 = migrer(v2);
+    assert.ok(v3.pieces.every((p) => p.elements === null));
+    assert.ok(v3.reglages.grille.equipements.cuisine.elements.four);
+    // Calcul identique : sdb partielle = 50 % du forfait, comme avant la migration.
+    assert.equal(calculerEstimation(v3).travaux.total.moyen, calculerEstimation({ ...avant, mode: 'detaille' }).travaux.total.moyen);
+  });
+
+  test('une pièce neuve a une liste d’éléments vide', () => assert.deepEqual(creerPiece('cuisine').elements, []));
+
   test('une estimation neuve a un GES inconnu', () => assert.equal(creerEstimation().bien.ges, 'inconnu'));
 
   test('migration v1 → v2 : une estimation existante passe en mode détaillé', () => {

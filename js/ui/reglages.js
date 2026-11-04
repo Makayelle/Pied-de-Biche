@@ -68,8 +68,15 @@ export function ecranReglages({ rerendre }) {
     ),
 
     section('Grille : équipements (forfaits)', false,
-      ...Object.values(g.equipements).map((eq) => trio(eq.libelle, eq, 'forfait', r)),
-      pourcent('Équipement « partiel »', r, 'coefEquipementPartiel', r, 'Part du forfait complet'),
+      ...Object.values(g.equipements).map((eq) => trio(eq.libelle, eq, 'forfait complet', r)),
+      ...Object.values(g.equipements).map((eq) => h('details', { class: 'repli repli--imbrique' },
+        h('summary', { class: 'repli__titre' }, `${eq.libelle} : éléments à acheter`),
+        h('div', { class: 'repli__contenu' },
+          h('p', { class: 'champ__aide' }, 'Équipement « partiel » : prix d’achat de chaque élément, sans pose.'),
+          ...Object.values(eq.elements ?? {}).map((el) => trio(el.libelle, el, 'prix d’achat', r)),
+        ))),
+      pourcent('Équipement « partiel » sans élément choisi', r, 'coefEquipementPartiel', r,
+        'Part du forfait complet, pour les estimations créées avant le choix des éléments'),
     ),
 
     section('Grille : gros postes', false,

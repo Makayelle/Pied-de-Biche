@@ -94,6 +94,30 @@ export function choix({ libelle, options, valeur, onChange, compact = false, mas
   );
 }
 
+/**
+ * Groupe de cases à cocher, même rendu que les boutons de choix (sélection multiple).
+ * options : [{ valeur, libelle }] ; valeurs : tableau des valeurs cochées.
+ */
+export function cases({ libelle, options, valeurs, onChange, aide }) {
+  const cochees = new Set(valeurs);
+  return h('fieldset', { class: 'choix choix--cases' },
+    h('legend', { class: 'champ__libelle' }, libelle),
+    aide ? h('p', { class: 'champ__aide' }, aide) : null,
+    h('div', { class: 'choix__options' }, options.map((o) =>
+      h('label', { class: 'choix__option' },
+        h('input', {
+          type: 'checkbox', value: o.valeur, checked: cochees.has(o.valeur),
+          onchange: (ev) => {
+            if (ev.target.checked) cochees.add(o.valeur); else cochees.delete(o.valeur);
+            onChange(options.map((x) => x.valeur).filter((v) => cochees.has(v)));
+          },
+        }),
+        h('span', {}, o.libelle),
+      ),
+    )),
+  );
+}
+
 /** Interrupteur (case à cocher stylée). */
 export function interrupteur({ libelle, coche, onChange, aide }) {
   const id = idUnique('i');

@@ -547,3 +547,7 @@ textarea.champ__saisie { resize: vertical; min-height: 6rem; }
 
 .choix-mode p { margin-bottom: var(--e-3); color: var(--c-texte-doux); }
 .choix-mode strong { color: var(--c-texte); }
+
+/* Réglages : éléments d'équipement, repliés sous les forfaits. */
+.repli--imbrique { border-top: 1px solid var(--c-bordure); margin: 0 calc(-1 * var(--e-5)); }
+.repli--imbrique > .repli__titre { font-size: var(--t-s); }

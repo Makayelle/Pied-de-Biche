@@ -7,7 +7,7 @@ import {
   prixReventeBase, fraisVente, calculerScenario, parametresScenarios, prixAchatMax,
   verdict, calculerEstimation, margeNette,
 } from '../js/calc/engine.js';
-import { reglagesParDefaut, REGLAGES_DEFAUT } from '../js/calc/defaults.js';
+import { reglagesParDefaut, completerReglages, REGLAGES_DEFAUT } from '../js/calc/defaults.js';
 import { creerEstimation, creerPiece, SCHEMA_VERSION } from '../js/data/schema.js';
 
 const proche = (reel, attendu, msg, tol = 0.01) =>
@@ -16,7 +16,8 @@ const proche = (reel, attendu, msg, tol = 0.01) =>
 /**
  * Cas de référence RP — maison de 100 m² achetée 150 000 €.
  *   Pièces : séjour 30 m² à rénover (artisan) ; cuisine 12 m² à refaire + équipement complet (nous-mêmes) ;
- *            salle de bain 6 m² à rafraîchir + équipement partiel (artisan) ; chambre 12 m² en bon état.
+ *            salle de bain 6 m² à rafraîchir + équipement partiel sans élément choisi, soit 50 % du forfait (artisan) ;
+ *            chambre 12 m² en bon état.
  *   Postes : électricité complète (100 m² hab., artisan) ; 6 fenêtres (nous-mêmes) ; mur porteur (artisan, structurel).
  *   Financement : apport 50 000, emprunt 180 000 à 3,6 %, assurance 0,3 %/an, dossier 1 000, garantie 2 000, IRA.
  *   Portage 9 mois : TF 1 200 €/an, assurance 360 €/an, énergie 100 €/mois.
@@ -29,7 +30,7 @@ function casReference() {
   e.pieces = [
     { ...creerPiece('sejour'), surface: 30, etat: 'renover', mode: 'artisan' },
     { ...creerPiece('cuisine'), surface: 12, etat: 'refaire', equipement: 'complet', mode: 'nous' },
-    { ...creerPiece('sdb'), surface: 6, etat: 'rafraichir', equipement: 'partiel', mode: 'artisan' },
+    { ...creerPiece('sdb'), surface: 6, etat: 'rafraichir', equipement: 'partiel', elements: null, mode: 'artisan' },
     { ...creerPiece('chambre'), surface: 12, etat: 'bon' },
   ];
   const poste = (cle) => e.postes.find((p) => p.cle === cle);
@@ -165,6 +166,39 @@ describe('travaux', () => {
     r.coefMateriaux = { pieces: 0.5, equipements: 0.25, postes: 0.4 };
     const c = coutPiece({ type: 'cuisine', surface: 10, etat: 'renover', equipement: 'complet', mode: 'nous' }, r);
     proche(c.moyen, 10 * 450 * 0.5 + 8000 * 0.25);
+  });
+
+  test('équipement partiel : somme des éléments cochés, au prix d’achat', () => {
+    // Cuisine 10 m² en bon état, four + hotte + lave-vaisselle :
+    // bas 250 + 120 + 300 = 670 · moyen 450 + 300 + 500 = 1 250 · haut 900 + 700 + 900 = 2 500
+    const piece = { type: 'cuisine', surface: 10, etat: 'bon', equipement: 'partiel', elements: ['four', 'hotte', 'laveVaisselle'], mode: 'artisan' };
+    assert.deepEqual(coutPiece(piece, R), { bas: 670, moyen: 1250, haut: 2500 });
+    // Le coefficient « Nous-mêmes » ne s'applique pas à un appareil acheté.
+    assert.deepEqual(coutPiece({ ...piece, mode: 'nous' }, R), { bas: 670, moyen: 1250, haut: 2500 });
+  });
+
+  test('équipement partiel sans élément coché : rien à acheter', () => {
+    const c = coutPiece({ type: 'sdb', surface: 5, etat: 'bon', equipement: 'partiel', elements: [], mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 0, moyen: 0, haut: 0 });
+  });
+
+  test('équipement partiel d’une estimation antérieure (sans liste) : part du forfait', () => {
+    const c = coutPiece({ type: 'wc', surface: 2, etat: 'bon', equipement: 'partiel', elements: null, mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 750, moyen: 1250, haut: 2000 });
+  });
+
+  test('les éléments ne comptent qu’en équipement partiel', () => {
+    const c = coutPiece({ type: 'wc', surface: 2, etat: 'bon', equipement: 'complet', elements: ['laveMains'], mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 1500, moyen: 2500, haut: 4000 });
+  });
+
+  test('réglages enregistrés avant les éléments : complétés sans toucher aux prix', () => {
+    const anciens = reglagesParDefaut();
+    for (const eq of Object.values(anciens.grille.equipements)) delete eq.elements;
+    anciens.grille.equipements.cuisine.moyen = 9999;
+    const r = completerReglages(anciens);
+    assert.equal(r.grille.equipements.cuisine.moyen, 9999);
+    assert.deepEqual(r.grille.equipements.sdb.elements, REGLAGES_DEFAUT.grille.equipements.sdb.elements);
   });
 
   test('quantité par défaut des postes', () => {
