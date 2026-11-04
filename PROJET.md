@@ -363,7 +363,7 @@ Les réglages fiscaux doivent être clairement présentés comme **« à vérifi
 | 1 | Forfait WC | Le forfait d'équipement s'applique aussi aux **WC** (aucun / partiel / complet), en plus de la cuisine et de la salle de bain. |
 | 2 | Postes sans prix (ITI, poêle, radiateurs électriques, divers…) | Valeurs indicatives ajoutées à la grille par défaut, toutes **modifiables dans l'onglet Réglages**. |
 | 3 | Base de la dommages-ouvrage | **Travaux hors aléas**, au coût effectivement chiffré (matériaux seuls pour « Nous-mêmes »). Option dans les réglages pour inclure les aléas. |
-| 4 | Coefficient matériaux par catégorie | Trois coefficients : **pièces**, **équipements**, **gros postes** (40 % par défaut chacun). |
+| 4 | Coefficient matériaux par catégorie | Trois coefficients : **pièces**, **équipements**, **gros postes** (40 % par défaut chacun). Le coefficient « équipements » est remplacé par les coefficients de pose de la décision 13. |
 | 5 | Rendement annualisé | Calculé sur la **durée de portage**. |
 | 6 | IRA en RP | Calcul simplifié sur le **capital emprunté** (plafond : min(6 mois d'intérêts, 3 %)). |
 | 7 | TVA en MDB | Hors périmètre v1 (prix TTC, revente d'ancien supposée exonérée), mention sur la fiche. |
@@ -372,3 +372,4 @@ Les réglages fiscaux doivent être clairement présentés comme **« à vérifi
 | 10 | Prix d'achat | Le « prix d'achat visé » devient un **prix négocié facultatif**. Sans lui, le calcul se fait sur le **prix affiché** ; la synthèse donne le prix d'achat maximum à viser. |
 | 11 | Modes d'estimation | **Rapide** (une page : surface, état général, réalisation, prix affiché, revente ; sans prêt ni portage) ou **Détaillée** (l'existant). Passage de l'un à l'autre sans perte. Schéma de données v2 (migration automatique). |
 | 12 | Préconisations | La synthèse indique le **prix d'achat à viser** (et sa version prudente) et le **budget travaux à ne pas dépasser** au prix retenu, pour la marge cible. |
+| 13 | Décomposition des équipements | Le prix « complet » d'une cuisine, d'une salle de bain ou de WC = **électroménager ou sanitaires** + **mobilier** (prix d'achat, plein tarif dans les deux modes) + **pose et raccordements** (fourni-posé). En « Nous-mêmes », seule la pose est réduite, avec un **coefficient par pièce** (cuisine 20 %, salle de bain 40 %, WC 30 %). En « Partiel » : éléments cochés + pose **au prorata** de leur prix, si bien que tout cocher revient au complet. Une seule cuvette de WC (à poser ou suspendue). |

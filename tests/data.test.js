@@ -50,11 +50,21 @@ describe('migrations', () => {
     v2.schemaVersion = 2;
     v2.pieces.push({ ...creerPiece('sdb'), surface: 6, etat: 'bon', equipement: 'partiel' });
     for (const p of v2.pieces) delete p.elements;
-    for (const eq of Object.values(v2.reglages.grille.equipements)) delete eq.elements;
+    // Réglages d'avant la v0.8.0 : un forfait complet unique par équipement, sans éléments ni part pose.
+    const forfaits = { cuisine: [4000, 8000, 15000], sdb: [5000, 9000, 15000], wc: [1500, 2500, 4000] };
+    for (const [cle, eq] of Object.entries(v2.reglages.grille.equipements)) {
+      delete eq.elements;
+      delete eq.pose;
+      [eq.bas, eq.moyen, eq.haut] = forfaits[cle];
+    }
+    v2.reglages.coefMateriaux = { pieces: 0.4, equipements: 0.4, postes: 0.4 };
     const avant = structuredClone(v2);
     const v3 = migrer(v2);
     assert.ok(v3.pieces.every((p) => p.elements === null));
     assert.ok(v3.reglages.grille.equipements.cuisine.elements.four);
+    // Le forfait complet est conservé : la pose est le reste une fois les éléments payés.
+    assert.deepEqual(v3.reglages.grille.equipements.cuisine.pose, REGLAGES_DEFAUT.grille.equipements.cuisine.pose);
+    assert.deepEqual(v3.reglages.coefMateriaux.pose, REGLAGES_DEFAUT.coefMateriaux.pose);
     // Calcul identique : sdb partielle = 50 % du forfait, comme avant la migration.
     assert.equal(calculerEstimation(v3).travaux.total.moyen, calculerEstimation({ ...avant, mode: 'detaille' }).travaux.total.moyen);
   });
