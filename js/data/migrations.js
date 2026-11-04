@@ -13,6 +13,11 @@ export const MIGRATIONS = {
     e.bien.modeGeneral ??= 'artisan';
     return e;
   },
+  // v2 → v3 : ajout de la classe GES (émissions de gaz à effet de serre), à côté du DPE.
+  2: (e) => {
+    e.bien.ges ??= 'inconnu';
+    return e;
+  },
 };
 
 export class ErreurMigration extends Error {}

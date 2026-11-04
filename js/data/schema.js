@@ -1,7 +1,7 @@
 // Modèle de données d'une estimation. Toute évolution passe par une migration (js/data/migrations.js, jalon J4).
 import { reglagesParDefaut, REGLAGES_DEFAUT } from '../calc/defaults.js';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Modes de saisie : rapide (une page, « à la louche ») ou détaillé (pièces, postes, financement). */
 export const MODES = ['rapide', 'detaille'];
@@ -28,7 +28,7 @@ export function creerEstimation({ reglages = reglagesParDefaut(), maintenant = n
     bien: {
       adresse: '', commune: '', type: 'maison', anneeConstruction: null,
       surfaceHabitable: null, surfaceTerrain: null, nbPieces: null, nbNiveaux: null,
-      dpe: 'inconnu', source: 'agence', contact: '',
+      dpe: 'inconnu', ges: 'inconnu', source: 'agence', contact: '',
       prixAffiche: null, prixAchat: null,
       // Estimation rapide : état général du bien et mode de réalisation global.
       etatGeneral: 'renover', modeGeneral: 'artisan',

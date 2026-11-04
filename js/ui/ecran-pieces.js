@@ -1,6 +1,6 @@
 // Étape 2 — Pièces : liste dynamique avec état, équipement et mode de réalisation.
 import { h, picto, format } from './dom.js';
-import { champNombre, champTexte, choix, duo } from './composants.js';
+import { champNombre, champTexte, choix, duo, legendeObligatoire } from './composants.js';
 import { ETATS, TYPES_PIECES } from '../calc/defaults.js';
 import { creerPiece } from '../data/schema.js';
 import { galeriePhotos } from './photos.js';
@@ -55,7 +55,7 @@ function cartePiece(ctx, piece) {
       }, picto('corbeille')),
     ),
     duo(
-      champNombre({ libelle: 'Surface', unite: 'm²', valeur: piece.surface, onChange: p('surface'), id: `surface-${piece.id}` }),
+      champNombre({ libelle: 'Surface', unite: 'm²', valeur: piece.surface, obligatoire: true, onChange: p('surface'), id: `surface-${piece.id}` }),
       champTexte({ libelle: 'Nom (facultatif)', valeur: piece.nom, placeholder: type.libelle, onChange: (v) => {
         ctx.changer(() => { piece.nom = v; });
         document.querySelector(`#piece-${piece.id} .carte__titre`).textContent = v || type.libelle;
@@ -82,6 +82,7 @@ export function ecranPieces(ctx) {
 
   return [
     h('h1', {}, 'Pièces'),
+    legendeObligatoire(),
     pieces.length === 0
       ? h('p', { class: 'vide vide--compact' }, 'Ajoutez les pièces au fil de la visite.')
       : h('div', { class: 'pile' }, pieces.map((piece) => cartePiece(ctx, piece))),

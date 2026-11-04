@@ -7,6 +7,17 @@ const idUnique = (prefixe) => `${prefixe}-${++compteur}`;
 
 const fmtSaisie = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 4 });
 
+/** Libellé de champ, suivi d'un astérisque si le champ est nécessaire au calcul. */
+function libelleChamp(texte, obligatoire) {
+  return obligatoire
+    ? [texte, h('span', { class: 'champ__requis', 'aria-hidden': 'true' }, ' *')]
+    : texte;
+}
+
+/** Légende des astérisques, à placer en tête d'un écran qui comporte des champs obligatoires. */
+export const legendeObligatoire = () =>
+  h('p', { class: 'champ__aide legende-requis' }, h('span', { class: 'champ__requis', 'aria-hidden': 'true' }, '*'), ' Champ nécessaire au calcul de la marge');
+
 /** Convertit une saisie en nombre (null si vide, NaN si invalide). */
 export function lireNombre(texte) {
   const brut = String(texte).replace(/\s/g, '').replace(',', '.');
@@ -19,14 +30,14 @@ export function lireNombre(texte) {
  * Champ numérique avec unité.
  * `echelle` : facteur d'affichage (100 pour saisir en % une valeur stockée en fraction).
  */
-export function champNombre({ libelle, valeur, unite = '', echelle = 1, aide, placeholder, onChange, id = idUnique('n') }) {
+export function champNombre({ libelle, valeur, unite = '', echelle = 1, aide, placeholder, obligatoire = false, onChange, id = idUnique('n') }) {
   const affiche = (v) => (v == null ? '' : fmtSaisie.format(Math.round(v * echelle * 1e6) / 1e6));
   const idAide = aide ? `${id}-aide` : null;
 
   const input = h('input', {
     id, type: 'text', inputmode: 'decimal', autocomplete: 'off', enterkeyhint: 'next',
     class: 'champ__saisie', value: affiche(valeur), placeholder: placeholder ?? '',
-    'aria-describedby': idAide,
+    'aria-describedby': idAide, 'aria-required': obligatoire ? 'true' : null,
     onfocus: (ev) => { ev.target.value = ev.target.value.replace(/\s/g, ''); ev.target.select(); },
     onblur: (ev) => {
       const v = lireNombre(ev.target.value);
@@ -41,23 +52,24 @@ export function champNombre({ libelle, valeur, unite = '', echelle = 1, aide, pl
   });
 
   return h('div', { class: 'champ' },
-    h('label', { class: 'champ__libelle', for: id }, libelle),
+    h('label', { class: 'champ__libelle', for: id }, libelleChamp(libelle, obligatoire)),
     h('div', { class: 'champ__boite' }, input, unite ? h('span', { class: 'champ__unite', 'aria-hidden': 'true' }, unite) : null),
     aide ? h('p', { class: 'champ__aide', id: idAide }, aide) : null,
   );
 }
 
 /** Champ texte (une ligne ou plusieurs). */
-export function champTexte({ libelle, valeur, placeholder, multiligne = false, autocomplete = 'off', onChange, id = idUnique('t') }) {
+export function champTexte({ libelle, valeur, placeholder, multiligne = false, autocomplete = 'off', obligatoire = false, onChange, id = idUnique('t') }) {
   const attrs = {
     id, class: 'champ__saisie', placeholder: placeholder ?? '', autocomplete,
+    'aria-required': obligatoire ? 'true' : null,
     oninput: (ev) => onChange(ev.target.value),
   };
   const saisie = multiligne
     ? h('textarea', { ...attrs, rows: 3 }, valeur ?? '')
     : h('input', { ...attrs, type: 'text', value: valeur ?? '' });
   return h('div', { class: 'champ' },
-    h('label', { class: 'champ__libelle', for: id }, libelle),
+    h('label', { class: 'champ__libelle', for: id }, libelleChamp(libelle, obligatoire)),
     h('div', { class: 'champ__boite' }, saisie),
   );
 }

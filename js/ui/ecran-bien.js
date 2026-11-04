@@ -1,6 +1,6 @@
 // Étape 1 — Le bien. En mode rapide, cette page suffit : travaux globaux et revente y sont saisis.
 import { h, format } from './dom.js';
-import { champNombre, champTexte, choix, section, duo } from './composants.js';
+import { champNombre, champTexte, choix, section, duo, legendeObligatoire } from './composants.js';
 import { galeriePhotos } from './photos.js';
 import { sortieCout } from './ecran-pieces.js';
 import { ETATS } from '../calc/defaults.js';
@@ -10,7 +10,8 @@ const TYPES = [
   { valeur: 'appartement', libelle: 'Appartement' },
   { valeur: 'immeuble', libelle: 'Immeuble' },
 ];
-const DPE = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => ({ valeur: l, libelle: l }))
+// Classes énergie (DPE) et climat (GES) : mêmes lettres A à G.
+const CLASSES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => ({ valeur: l, libelle: l }))
   .concat({ valeur: 'inconnu', libelle: '?' });
 const SOURCES = [
   { valeur: 'agence', libelle: 'Agence' },
@@ -56,8 +57,8 @@ function sectionsRapides(ctx) {
     section('Revente',
       choix({ libelle: 'Prix de revente', options: MODES_REVENTE, valeur: rv.mode, onChange: pr('mode', { structure: true }) }),
       rv.mode === 'm2'
-        ? champNombre({ libelle: 'Prix au m² du secteur', unite: '€/m²', valeur: rv.prixM2, onChange: pr('prixM2') })
-        : champNombre({ libelle: 'Prix de revente estimé', unite: '€', valeur: rv.prix, onChange: pr('prix') }),
+        ? champNombre({ libelle: 'Prix au m² du secteur', unite: '€/m²', valeur: rv.prixM2, obligatoire: true, onChange: pr('prixM2') })
+        : champNombre({ libelle: 'Prix de revente estimé', unite: '€', valeur: rv.prix, obligatoire: true, onChange: pr('prix') }),
       rv.mode === 'm2'
         ? calcule((r) => (b.surfaceHabitable ? `Soit ${format.euros(r.scenarios.central.prixRevente)}` : 'Renseignez la surface habitable'))
         : null,
@@ -78,6 +79,7 @@ export function ecranBien(ctx) {
 
   return [
     h('h1', {}, 'Le bien'),
+    legendeObligatoire(),
     h('p', { class: 'regime' }, h('span', { class: 'etiquette' }, 'Résidence principale'),
       ' Cadre fiscal de l’estimation (seul régime de la v1).'),
 
@@ -99,7 +101,7 @@ export function ecranBien(ctx) {
     section('Caractéristiques',
       choix({ libelle: 'Type de bien', options: TYPES, valeur: b.type, onChange: p('type') }),
       duo(
-        champNombre({ libelle: 'Surface habitable', unite: 'm²', valeur: b.surfaceHabitable, onChange: p('surfaceHabitable') }),
+        champNombre({ libelle: 'Surface habitable', unite: 'm²', valeur: b.surfaceHabitable, obligatoire: true, onChange: p('surfaceHabitable') }),
         champNombre({ libelle: 'Terrain', unite: 'm²', valeur: b.surfaceTerrain, onChange: p('surfaceTerrain') }),
       ),
       duo(
@@ -107,12 +109,13 @@ export function ecranBien(ctx) {
         champNombre({ libelle: 'Niveaux', valeur: b.nbNiveaux, onChange: p('nbNiveaux') }),
       ),
       champNombre({ libelle: 'Année de construction (environ)', valeur: b.anneeConstruction, placeholder: 'ex. 1965', onChange: p('anneeConstruction') }),
-      choix({ libelle: 'DPE', options: DPE, valeur: b.dpe, compact: true, onChange: p('dpe') }),
+      choix({ libelle: 'DPE (énergie)', options: CLASSES, valeur: b.dpe, compact: true, onChange: p('dpe') }),
+      choix({ libelle: 'GES (climat)', options: CLASSES, valeur: b.ges, compact: true, onChange: p('ges') }),
     ),
 
     section('Prix',
       duo(
-        champNombre({ libelle: 'Prix affiché', unite: '€', valeur: b.prixAffiche, onChange: p('prixAffiche') }),
+        champNombre({ libelle: 'Prix affiché', unite: '€', valeur: b.prixAffiche, obligatoire: true, onChange: p('prixAffiche') }),
         champNombre({ libelle: 'Prix négocié', unite: '€', valeur: b.prixAchat, aide: 'Facultatif', onChange: p('prixAchat') }),
       ),
       h('p', { class: 'champ__aide' }, 'Sans prix négocié, le calcul se fait sur le prix affiché. La synthèse indique le prix d’achat maximum à viser.'),
