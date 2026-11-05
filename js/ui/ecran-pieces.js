@@ -3,6 +3,7 @@ import { h, picto, format } from './dom.js';
 import { champNombre, champTexte, choix, cases, duo, legendeObligatoire } from './composants.js';
 import { ETATS, TYPES_PIECES, CATEGORIES_ELEMENTS, GROUPES_ELEMENTS } from '../calc/defaults.js';
 import { creerPiece } from '../data/schema.js';
+import { estForfaitAncien } from '../calc/engine.js';
 import { galeriePhotos } from './photos.js';
 import { confirmer } from './dialogue.js';
 import * as store from '../data/store.js';
@@ -40,15 +41,24 @@ export function sortieCout(ctx, calcul) {
  */
 function elementsAAcheter(ctx, piece, type) {
   const r = ctx.estimation.reglages;
+  // Estimation créée avec l'ancienne grille (forfait unique) : pas d'éléments à cocher.
+  if (estForfaitAncien(r.grille.equipements[type.equipement])) {
+    return h('p', { class: 'champ__aide' },
+      `Grille d’origine de cette estimation : l’équipement partiel compte pour ${format.pourcent(r.coefEquipementPartiel)} du forfait complet. `
+      + 'Pour choisir les éléments à acheter, recalculez-la avec les réglages actuels (en bas de la synthèse).');
+  }
   const elements = Object.entries(r.grille.equipements[type.equipement].elements ?? {});
   const ancien = !Array.isArray(piece.elements);
   const coches = ancien ? [] : piece.elements;
   const libelle = (el) => `${el.libelle} · ${format.euros(el.moyen)}`;
   // Remplace, dans la liste de la pièce, les éléments d'un sous-groupe par la nouvelle sélection.
-  const remplacer = (cles, selection) => ctx.changer(() => {
+  // Redessin quand on quitte l'ancien mode ou quand la liste devient vide / non vide (message d'alerte).
+  const remplacer = (cles, selection) => {
     const actuels = Array.isArray(piece.elements) ? piece.elements : [];
-    piece.elements = [...actuels.filter((c) => !cles.includes(c)), ...selection];
-  }, ancien ? { structure: true } : undefined);
+    const nouveaux = [...actuels.filter((c) => !cles.includes(c)), ...selection];
+    const bascule = ancien || (actuels.length === 0) !== (nouveaux.length === 0);
+    ctx.changer(() => { piece.elements = nouveaux; }, bascule ? { structure: true } : undefined);
+  };
 
   const blocs = [];
   for (const [groupe, titre] of Object.entries(GROUPES_ELEMENTS)) {
@@ -78,6 +88,9 @@ function elementsAAcheter(ctx, piece, type) {
     h('p', { class: 'champ__aide' }, ancien
       ? `Aucun élément choisi : l’équipement partiel compte pour ${format.pourcent(r.coefEquipementPartiel)} du complet. Cochez les éléments pour affiner.`
       : 'Prix d’achat des éléments, plus la pose au prorata (fournitures seules en « Nous-mêmes »). Tout cocher revient au complet.'),
+    !ancien && coches.length === 0
+      ? h('p', { class: 'champ__aide champ__aide--alerte', role: 'status' }, 'Aucun élément coché : l’équipement compte pour 0 €.')
+      : null,
     ...blocs,
   );
 }

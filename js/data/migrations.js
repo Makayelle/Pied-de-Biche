@@ -13,12 +13,15 @@ export const MIGRATIONS = {
     e.bien.modeGeneral ??= 'artisan';
     return e;
   },
-  // v2 → v3 : ajout de la classe GES (émissions de gaz à effet de serre), à côté du DPE,
-  // et des éléments d'équipement à acheter (équipement « partiel »).
-  // Les pièces existantes gardent `elements: null` : leur équipement partiel reste calculé
-  // en part du forfait, pour ne pas changer une estimation déjà enregistrée.
+  // v2 → v3 : ajout de la classe GES (émissions de gaz à effet de serre), à côté du DPE.
   2: (e) => {
     e.bien.ges ??= 'inconnu';
+    return e;
+  },
+  // v3 → v4 : éléments d'équipement à acheter (équipement « partiel »).
+  // Les pièces existantes gardent `elements: null` : leur équipement partiel reste calculé
+  // en part du forfait, pour ne pas changer une estimation déjà enregistrée.
+  3: (e) => {
     for (const p of e.pieces ?? []) if (!('elements' in p)) p.elements = null;
     return e;
   },

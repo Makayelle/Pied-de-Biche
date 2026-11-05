@@ -7,7 +7,7 @@ import {
   construireExport, analyserImport, conflits, nomFichier, blobVersDataUrl, dataUrlVersBlob, FORMAT,
 } from '../js/data/io.js';
 import { calculerEstimation } from '../js/calc/engine.js';
-import { REGLAGES_DEFAUT } from '../js/calc/defaults.js';
+import { REGLAGES_DEFAUT, reglagesParDefaut } from '../js/calc/defaults.js';
 
 function exemple() {
   const e = creerEstimation({ maintenant: new Date('2026-11-01T10:00:00Z') });
@@ -33,40 +33,59 @@ describe('migrations', () => {
     assert.deepEqual(migrer(e), e);
   });
 
-  test('le schéma courant est 3', () => assert.equal(SCHEMA_VERSION, 3));
+  test('le schéma courant est 4', () => assert.equal(SCHEMA_VERSION, 4));
 
   test('migration v2 → v3 : ajout du GES, inconnu par défaut', () => {
     const v2 = exemple();
     v2.schemaVersion = 2;
     delete v2.bien.ges;
     const v3 = migrer(v2);
-    assert.equal(v3.schemaVersion, 3);
+    assert.equal(v3.schemaVersion, SCHEMA_VERSION);
     assert.equal(v3.bien.ges, 'inconnu');
     assert.equal(v3.bien.dpe, exemple().bien.dpe);
   });
 
-  test('migration v2 → v3 : l’équipement partiel existant garde son calcul', () => {
-    const v2 = exemple();
-    v2.schemaVersion = 2;
-    v2.pieces.push({ ...creerPiece('sdb'), surface: 6, etat: 'bon', equipement: 'partiel' });
-    for (const p of v2.pieces) delete p.elements;
-    // Réglages d'avant la v0.8.0 : un forfait complet unique par équipement, sans éléments ni part pose.
+  test('migration v3 → v4 : une estimation à l’ancienne grille garde exactement ses montants (critère §13)', () => {
+    const v3 = exemple();
+    v3.schemaVersion = 3;
+    v3.pieces = [
+      { ...creerPiece('cuisine'), surface: 12, etat: 'refaire', equipement: 'complet', mode: 'nous' },
+      { ...creerPiece('sdb'), surface: 6, etat: 'bon', equipement: 'partiel', mode: 'nous' },
+      { ...creerPiece('wc'), surface: 2, etat: 'bon', equipement: 'complet', mode: 'artisan' },
+      { ...creerPiece('cuisine'), surface: 8, etat: 'bon', equipement: 'partiel', mode: 'artisan' },
+    ];
+    for (const p of v3.pieces) delete p.elements;
+    // Réglages enregistrés avant la v0.8.1 : un forfait complet unique par équipement.
     const forfaits = { cuisine: [4000, 8000, 15000], sdb: [5000, 9000, 15000], wc: [1500, 2500, 4000] };
-    for (const [cle, eq] of Object.entries(v2.reglages.grille.equipements)) {
-      delete eq.elements;
-      delete eq.pose;
+    for (const [cle, eq] of Object.entries(v3.reglages.grille.equipements)) {
+      for (const k of Object.keys(eq)) if (k !== 'libelle') delete eq[k];
       [eq.bas, eq.moyen, eq.haut] = forfaits[cle];
     }
-    v2.reglages.coefMateriaux = { pieces: 0.4, equipements: 0.4, postes: 0.4 };
-    const avant = structuredClone(v2);
-    const v3 = migrer(v2);
-    assert.ok(v3.pieces.every((p) => p.elements === null));
-    assert.ok(v3.reglages.grille.equipements.cuisine.elements.four);
-    // Le forfait complet est conservé : la pose est le reste une fois les éléments payés.
-    assert.deepEqual(v3.reglages.grille.equipements.cuisine.pose, REGLAGES_DEFAUT.grille.equipements.cuisine.pose);
-    assert.deepEqual(v3.reglages.coefMateriaux.pose, REGLAGES_DEFAUT.coefMateriaux.pose);
-    // Calcul identique : sdb partielle = 50 % du forfait, comme avant la migration.
-    assert.equal(calculerEstimation(v3).travaux.total.moyen, calculerEstimation({ ...avant, mode: 'detaille' }).travaux.total.moyen);
+    v3.reglages.coefMateriaux = { pieces: 0.4, equipements: 0.4, postes: 0.4 };
+    const reglagesAvant = structuredClone(v3.reglages);
+
+    const v4 = migrer(v3);
+    assert.equal(v4.schemaVersion, 4);
+    assert.ok(v4.pieces.every((p) => p.elements === null));
+    assert.deepEqual(v4.reglages, reglagesAvant, 'la grille de l’estimation n’est pas convertie');
+    // Ancien calcul : forfait × (50 % si partiel) × (40 % si nous-mêmes).
+    const t = calculerEstimation(v4).travaux.lignes;
+    assert.equal(t[0].moyen, 12 * 1100 * 0.4 + 8000 * 0.4);   // cuisine complète, nous-mêmes : 5 280 + 3 200
+    assert.equal(t[1].moyen, 9000 * 0.5 * 0.4);                // sdb partielle, nous-mêmes : 1 800
+    assert.equal(t[2].moyen, 2500);                            // WC complet, artisan
+    assert.equal(t[3].moyen, 8000 * 0.5);                      // cuisine partielle, artisan : 4 000
+  });
+
+  test('après « Recalculer avec les réglages actuels », le nouveau calcul des équipements s’applique', () => {
+    const e = exemple();
+    e.pieces = [{ ...creerPiece('cuisine'), surface: 10, etat: 'bon', equipement: 'complet', mode: 'nous' }];
+    const eq = e.reglages.grille.equipements.cuisine;
+    for (const k of Object.keys(eq)) if (k !== 'libelle') delete eq[k];
+    [eq.bas, eq.moyen, eq.haut] = [4000, 8000, 15000];
+    e.reglages.coefMateriaux.equipements = 0.4;
+    assert.equal(calculerEstimation(e).travaux.lignes[0].moyen, 3200);
+    e.reglages = reglagesParDefaut();                          // ce que fait le bouton « Recalculer »
+    assert.equal(calculerEstimation(e).travaux.lignes[0].moyen, 6500 + 1500 * 0.2);
   });
 
   test('une pièce neuve a une liste d’éléments vide', () => assert.deepEqual(creerPiece('cuisine').elements, []));
@@ -98,9 +117,9 @@ describe('migrations', () => {
   test('applique les migrations dans l’ordre sans modifier la source', () => {
     const source = { schemaVersion: 1, a: 1 };
     // Version cible fictive, au-delà du schéma réel, pour tester l'enchaînement seul (sans normalisation).
-    const migrations = { 1: (e) => ({ ...e, b: e.a + 1 }), 2: (e) => ({ ...e, c: e.b * 10 }), 3: (e) => ({ ...e, d: e.c + 1 }) };
+    const migrations = { 1: (e) => ({ ...e, b: e.a + 1 }), 2: (e) => ({ ...e, c: e.b * 10 }), 3: (e) => ({ ...e, d: e.c + 1 }), 4: (e) => ({ ...e, z: true }) };
     const r = migrer(source, { migrations, versionCible: SCHEMA_VERSION + 1 });
-    assert.deepEqual(r, { schemaVersion: 4, a: 1, b: 2, c: 20, d: 21 });
+    assert.deepEqual(r, { schemaVersion: 5, a: 1, b: 2, c: 20, d: 21, z: true });
     assert.deepEqual(source, { schemaVersion: 1, a: 1 });
   });
 

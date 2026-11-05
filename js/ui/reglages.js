@@ -72,10 +72,10 @@ function equipementReglages(eq, r) {
     h('div', { class: 'repli__contenu' },
       total,
       ...parCategorie.flatMap(([cat, els]) => [
-        h('h3', { class: 'trio__categorie' }, cat.libelle),
+        h('p', { class: 'trio__categorie' }, cat.libelle),
         ...els.map((el) => trio(el.libelle, el, 'prix d’achat', r)),
       ]),
-      h('h3', { class: 'trio__categorie' }, 'Pose'),
+      h('p', { class: 'trio__categorie' }, 'Pose'),
       trio('Pose et raccordements', eq.pose, 'fourni-posé', r),
     ));
 }

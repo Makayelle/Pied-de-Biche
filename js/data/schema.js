@@ -1,7 +1,7 @@
 // Modèle de données d'une estimation. Toute évolution passe par une migration (js/data/migrations.js, jalon J4).
-import { reglagesParDefaut, completerReglages, REGLAGES_DEFAUT } from '../calc/defaults.js';
+import { reglagesParDefaut, REGLAGES_DEFAUT } from '../calc/defaults.js';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** Modes de saisie : rapide (une page, « à la louche ») ou détaillé (pièces, postes, financement). */
 export const MODES = ['rapide', 'detaille'];
@@ -84,7 +84,9 @@ function completer(cible, modele) {
  * complète les pièces et ajoute les gros postes absents de la liste.
  */
 export function normaliserEstimation(e) {
-  e.reglages = completerReglages(e.reglages ?? reglagesParDefaut());
+  // Les réglages d'une estimation ne sont JAMAIS convertis : elle garde sa grille d'origine
+  // (ancien forfait d'équipement compris) jusqu'à un « Recalculer avec les réglages actuels ».
+  e.reglages ??= reglagesParDefaut();
   const modele = creerEstimation({ reglages: e.reglages });
   delete modele.id;
   completer(e, modele);
