@@ -2,7 +2,9 @@
 // Entrée : une estimation (cf. js/data/schema.js) et ses réglages. Sortie : un objet de résultats.
 // Montants en euros, non arrondis : l'arrondi est fait à l'affichage.
 
-import { FOURCHETTES, TYPES_PIECES } from './defaults.js';
+import { FOURCHETTES, TYPES_PIECES, REGLAGES_DEFAUT, prixElements, completerEquipement } from './defaults.js';
+
+export { prixElements };
 
 /** Convertit une saisie en nombre fini ≥ 0 (champ vide ou invalide → 0). */
 export function n(v) {
@@ -18,18 +20,54 @@ const coefMode = (mode, categorie, reglages) => (mode === 'nous' ? reglages.coef
 // 7.1 Travaux
 // ---------------------------------------------------------------------------
 
-/** Coût d'une pièce pour chaque fourchette : surface × prix au m² de l'état + forfait d'équipement. */
-export function coutPiece(piece, reglages) {
-  const { grille } = reglages;
-  const prixEtat = grille.pieces[piece.etat]; // undefined pour « bon »
-  const typeEquip = TYPES_PIECES.find((t) => t.id === piece.type)?.equipement;
-  const forfait = typeEquip && piece.equipement !== 'aucun' ? grille.equipements[typeEquip] : null;
-  const partForfait = piece.equipement === 'partiel' ? reglages.coefEquipementPartiel : 1;
+/** Part « pose et raccordements » comptée selon le mode : fourni-posé (artisan) ou fournitures seules (nous-mêmes). */
+const coefPose = (mode, type, reglages) => (mode === 'nous'
+  ? reglages.coefMateriaux.pose?.[type] ?? REGLAGES_DEFAUT.coefMateriaux.pose[type]
+  : 1);
 
+/** Ancien coefficient « Nous-mêmes » unique des équipements (réglage par défaut avant la v0.8.1). */
+const COEF_EQUIPEMENTS_ANCIEN = 0.4;
+
+/** Vrai si la grille d'équipement est l'ancien forfait unique (bas / moyen / haut, sans part « pose »). */
+export function estForfaitAncien(eq) {
+  return Boolean(eq) && !eq.pose && FOURCHETTES.every((f) => typeof eq[f] === 'number');
+}
+
+/**
+ * Coût de l'équipement d'une pièce pour une fourchette.
+ * - complet : tous les éléments (prix d'achat) + pose (× coefficient de pose de la pièce en « Nous-mêmes ») ;
+ * - partiel : éléments cochés + pose au prorata de leur prix ; tout cocher revient au complet ;
+ * - partiel sans liste (estimations antérieures à la v0.8.0) : part réglable du complet.
+ */
+export function coutEquipement(piece, reglages, f) {
+  const type = TYPES_PIECES.find((t) => t.id === piece.type)?.equipement;
+  const brut = type ? reglages.grille.equipements[type] : null;
+  if (!brut || piece.equipement === 'aucun') return 0;
+  // Estimation enregistrée avec l'ancienne grille (forfait unique, avant la v0.8.1) : on garde
+  // l'ancien calcul pour que ses montants ne changent pas (critère §13). Le nouveau calcul
+  // s'applique après « Recalculer avec les réglages actuels ».
+  if (estForfaitAncien(brut)) {
+    const part = piece.equipement === 'partiel' ? reglages.coefEquipementPartiel : 1;
+    const coef = piece.mode === 'nous' ? reglages.coefMateriaux.equipements ?? COEF_EQUIPEMENTS_ANCIEN : 1;
+    return n(brut[f]) * part * coef;
+  }
+  // Format intermédiaire (éléments sans part « pose ») : complété sur une copie, le moteur reste pur.
+  const eq = brut.pose && brut.elements ? brut : completerEquipement(structuredClone(brut), type);
+  const pose = n(eq.pose[f]) * coefPose(piece.mode, type, reglages);
+  const tous = prixElements(eq, Object.keys(eq.elements), f);
+  const complet = tous + pose;
+  if (piece.equipement === 'complet') return complet;
+  if (!Array.isArray(piece.elements)) return complet * reglages.coefEquipementPartiel;
+  const coches = prixElements(eq, piece.elements, f);
+  return coches + (tous > 0 ? pose * coches / tous : 0);
+}
+
+/** Coût d'une pièce pour chaque fourchette : surface × prix au m² de l'état + équipement. */
+export function coutPiece(piece, reglages) {
+  const prixEtat = reglages.grille.pieces[piece.etat]; // undefined pour « bon »
   return parFourchette((f) => {
     const surface = prixEtat ? n(piece.surface) * prixEtat[f] * coefMode(piece.mode, 'pieces', reglages) : 0;
-    const equipement = forfait ? forfait[f] * partForfait * coefMode(piece.mode, 'equipements', reglages) : 0;
-    return surface + equipement;
+    return surface + coutEquipement(piece, reglages, f);
   });
 }
 

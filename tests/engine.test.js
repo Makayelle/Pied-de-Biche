@@ -7,7 +7,7 @@ import {
   prixReventeBase, fraisVente, calculerScenario, parametresScenarios, prixAchatMax,
   verdict, calculerEstimation, margeNette,
 } from '../js/calc/engine.js';
-import { reglagesParDefaut, REGLAGES_DEFAUT } from '../js/calc/defaults.js';
+import { reglagesParDefaut, completerReglages, REGLAGES_DEFAUT } from '../js/calc/defaults.js';
 import { creerEstimation, creerPiece, SCHEMA_VERSION } from '../js/data/schema.js';
 
 const proche = (reel, attendu, msg, tol = 0.01) =>
@@ -15,8 +15,10 @@ const proche = (reel, attendu, msg, tol = 0.01) =>
 
 /**
  * Cas de référence RP — maison de 100 m² achetée 150 000 €.
- *   Pièces : séjour 30 m² à rénover (artisan) ; cuisine 12 m² à refaire + équipement complet (nous-mêmes) ;
- *            salle de bain 6 m² à rafraîchir + équipement partiel (artisan) ; chambre 12 m² en bon état.
+ *   Pièces : séjour 30 m² à rénover (artisan) ; cuisine 12 m² à refaire + équipement complet (nous-mêmes :
+ *            éléments plein tarif, pose à 20 %) ;
+ *            salle de bain 6 m² à rafraîchir + équipement partiel sans élément choisi, soit 50 % du forfait (artisan) ;
+ *            chambre 12 m² en bon état.
  *   Postes : électricité complète (100 m² hab., artisan) ; 6 fenêtres (nous-mêmes) ; mur porteur (artisan, structurel).
  *   Financement : apport 50 000, emprunt 180 000 à 3,6 %, assurance 0,3 %/an, dossier 1 000, garantie 2 000, IRA.
  *   Portage 9 mois : TF 1 200 €/an, assurance 360 €/an, énergie 100 €/mois.
@@ -29,7 +31,7 @@ function casReference() {
   e.pieces = [
     { ...creerPiece('sejour'), surface: 30, etat: 'renover', mode: 'artisan' },
     { ...creerPiece('cuisine'), surface: 12, etat: 'refaire', equipement: 'complet', mode: 'nous' },
-    { ...creerPiece('sdb'), surface: 6, etat: 'rafraichir', equipement: 'partiel', mode: 'artisan' },
+    { ...creerPiece('sdb'), surface: 6, etat: 'rafraichir', equipement: 'partiel', elements: null, mode: 'artisan' },
     { ...creerPiece('chambre'), surface: 12, etat: 'bon' },
   ];
   const poste = (cle) => e.postes.find((p) => p.cle === cle);
@@ -53,26 +55,27 @@ describe('cas de référence RP (calculé à la main)', () => {
 
   test('travaux fourchette moyenne', () => {
     // séjour      30 × 450                         = 13 500
-    // cuisine     12 × 1 100 × 0,4 + 8 000 × 0,4   =  8 480
+    // cuisine     12 × 1 100 × 0,4                  =  5 280
+    //             + éléments 6 500 + pose 1 500 × 0,2 =  6 800
     // sdb          6 × 60 + 9 000 × 0,5             =  4 860
     // chambre     bon état                          =      0
     // électricité 100 × 110                         = 11 000
     // fenêtres    6 × 800 × 0,4                     =  1 920
     // mur porteur 1 × 5 000                         =  5 000
-    proche(r.travaux.sousTotal.moyen, 44760, 'sous-total');
-    proche(r.travaux.aleas.moyen, 6714, 'aléas 15 %');
-    proche(r.travaux.total.moyen, 51474, 'total avec aléas');
+    proche(r.travaux.sousTotal.moyen, 48360, 'sous-total');
+    proche(r.travaux.aleas.moyen, 7254, 'aléas 15 %');
+    proche(r.travaux.total.moyen, 55614, 'total avec aléas');
   });
 
   test('travaux fourchette haute', () => {
-    // 30×700 + (12×1600×0,4 + 15000×0,4) + (6×100 + 15000×0,5) + 100×150 + 6×1200×0,4 + 8000
-    // = 21 000 + 13 680 + 8 100 + 15 000 + 2 880 + 8 000 = 68 660
-    proche(r.travaux.sousTotal.haut, 68660);
+    // 30×700 + (12×1600×0,4 + 12 950 + 2 050×0,2) + (6×100 + 15000×0,5) + 100×150 + 6×1200×0,4 + 8000
+    // = 21 000 + 21 040 + 8 100 + 15 000 + 2 880 + 8 000 = 76 020
+    proche(r.travaux.sousTotal.haut, 76020);
   });
 
   test('dommages-ouvrage déclenchée par le mur porteur, sur les travaux hors aléas', () => {
     assert.equal(r.travaux.dommagesOuvrageActive, true);
-    proche(c.detail.dommagesOuvrage, 1790.40, '4 % × 44 760');
+    proche(c.detail.dommagesOuvrage, 1934.40, '4 % × 48 360');
   });
 
   test('financement : intérêts, assurance, frais et IRA', () => {
@@ -89,32 +92,32 @@ describe('cas de référence RP (calculé à la main)', () => {
   });
 
   test('coût de revient', () => {
-    // 150 000 + 11 250 (7,5 %) + 0 + 51 474 + 1 790,40 + 11 505 + 2 070
+    // 150 000 + 11 250 (7,5 %) + 0 + 55 614 + 1 934,40 + 11 505 + 2 070
     proche(c.detail.fraisAcquisition, 11250);
-    proche(c.coutRevient, 228089.40);
+    proche(c.coutRevient, 232373.40);
   });
 
   test('marges et indicateurs du scénario central', () => {
     proche(c.detail.fraisVente.total, 16000, '14 500 + 500 + 1 000');
-    proche(c.margeBrute, 45910.60, '290 000 − 16 000 − 228 089,40');
-    proche(c.margeNette, 45910.60, 'RP : nette = brute');
-    proche(c.pctCoutRevient, 45910.60 / 228089.40, '', 1e-9);
-    proche(c.pctRevente, 45910.60 / 290000, '', 1e-9);
-    proche(c.rendementApport, 0.918212, '', 1e-6);
-    proche(c.rendementAnnualise, 1.918212 ** (12 / 9) - 1, '', 1e-6);
-    proche(c.resteAFinancer, 228089.40 - 230000);
-    assert.equal(c.verdict, 'ok', '20,13 % ≥ 20 %');
+    proche(c.margeBrute, 41626.60, '290 000 − 16 000 − 232 373,40');
+    proche(c.margeNette, 41626.60, 'RP : nette = brute');
+    proche(c.pctCoutRevient, 41626.60 / 232373.40, '', 1e-9);
+    proche(c.pctRevente, 41626.60 / 290000, '', 1e-9);
+    proche(c.rendementApport, 0.832532, '', 1e-6);
+    proche(c.rendementAnnualise, 1.832532 ** (12 / 9) - 1, '', 1e-6);
+    proche(c.resteAFinancer, 232373.40 - 230000);
+    assert.equal(c.verdict, 'vigilance', '10 % ≤ 17,91 % < 20 %');
   });
 
   test('rémunération horaire implicite', () => {
-    proche(r.remunerationHoraire, 45910.60 / 400);
+    proche(r.remunerationHoraire, 41626.60 / 400);
   });
 
   test('prix d’achat maximum pour 20 % de marge', () => {
-    // Coût de revient = P × 1,075 + K, avec K = 228 089,40 − 161 250 = 66 839,40
-    // Cible : 274 000 − CR = 0,2 × CR → CR = 228 333,33 → P = (228 333,33 − 66 839,40) / 1,075
-    proche(r.prixAchatMax, (274000 / 1.2 - 66839.40) / 1.075, 'prix max');
-    proche(r.prixAchatMax, 150226.91);
+    // Coût de revient = P × 1,075 + K, avec K = 232 373,40 − 161 250 = 71 123,40
+    // Cible : 274 000 − CR = 0,2 × CR → CR = 228 333,33 → P = (228 333,33 − 71 123,40) / 1,075
+    proche(r.prixAchatMax, (274000 / 1.2 - 71123.40) / 1.075, 'prix max');
+    proche(r.prixAchatMax, 146241.80);
     // Vérification directe : à ce prix, la marge vaut exactement la cible.
     const s = calculerScenario(e, parametresScenarios(e).central, r.travaux, r.prixAchatMax);
     proche(s.pctCoutRevient, 0.20, '', 1e-6);
@@ -160,11 +163,103 @@ describe('travaux', () => {
     assert.deepEqual(c, { bas: 300, moyen: 600, haut: 1000 });
   });
 
-  test('coefficients matériaux distincts par catégorie (décision §15-4)', () => {
+  test('coefficients matériaux distincts : pièces, et pose de chaque équipement', () => {
     const r = reglagesParDefaut();
-    r.coefMateriaux = { pieces: 0.5, equipements: 0.25, postes: 0.4 };
+    r.coefMateriaux.pieces = 0.5;
+    r.coefMateriaux.pose.cuisine = 0.25;
     const c = coutPiece({ type: 'cuisine', surface: 10, etat: 'renover', equipement: 'complet', mode: 'nous' }, r);
-    proche(c.moyen, 10 * 450 * 0.5 + 8000 * 0.25);
+    // Surface à 50 % ; électroménager 3 500 et mobilier 3 000 plein tarif ; pose 1 500 à 25 %.
+    proche(c.moyen, 10 * 450 * 0.5 + 3500 + 3000 + 1500 * 0.25);
+  });
+
+  test('complet = éléments (prix d’achat) + pose ; en « Nous-mêmes », seule la pose est réduite', () => {
+    const cuisine = { type: 'cuisine', surface: 10, etat: 'bon', equipement: 'complet', mode: 'artisan' };
+    assert.deepEqual(coutPiece(cuisine, R), { bas: 4000, moyen: 8000, haut: 15000 });
+    // bas 3 400 + 600 × 0,2 · moyen 6 500 + 1 500 × 0,2 · haut 12 950 + 2 050 × 0,2
+    const nous = coutPiece({ ...cuisine, mode: 'nous' }, R);
+    proche(nous.bas, 3520); proche(nous.moyen, 6800); proche(nous.haut, 13360);
+    // Salle de bain (pose à 40 %) et WC (pose à 30 %, une seule cuvette : la suspendue).
+    proche(coutPiece({ ...cuisine, type: 'sdb', mode: 'nous' }, R).moyen, 2700 + 6300 * 0.4);
+    proche(coutPiece({ ...cuisine, type: 'wc', mode: 'nous' }, R).moyen, 950 + 1550 * 0.3);
+  });
+
+  test('équipement partiel : éléments cochés + pose au prorata de leur prix', () => {
+    // Cuisine 10 m² en bon état, four + hotte + lave-vaisselle : moyen 450 + 300 + 500 = 1 250
+    // sur 6 500 € d'éléments ; pose 1 500 (artisan) ou 1 500 × 0,2 = 300 (nous-mêmes).
+    const piece = { type: 'cuisine', surface: 10, etat: 'bon', equipement: 'partiel', elements: ['four', 'hotte', 'laveVaisselle'], mode: 'artisan' };
+    proche(coutPiece(piece, R).moyen, 1250 + 1500 * 1250 / 6500);
+    proche(coutPiece(piece, R).bas, 670 + 600 * 670 / 3400);
+    // En « Nous-mêmes », les appareils restent plein tarif ; seule la pose passe aux fournitures.
+    proche(coutPiece({ ...piece, mode: 'nous' }, R).moyen, 1250 + 300 * 1250 / 6500);
+  });
+
+  test('équipement partiel tout coché = complet, dans les deux modes', () => {
+    for (const type of ['cuisine', 'sdb', 'wc']) {
+      const elements = Object.keys(R.grille.equipements[type].elements);
+      for (const mode of ['artisan', 'nous']) {
+        const base = { type, surface: 5, etat: 'bon', mode };
+        const partiel = coutPiece({ ...base, equipement: 'partiel', elements }, R);
+        const complet = coutPiece({ ...base, equipement: 'complet' }, R);
+        for (const f of ['bas', 'moyen', 'haut']) proche(partiel[f], complet[f], `${type} ${mode} ${f}`);
+      }
+    }
+  });
+
+  test('WC : une seule cuvette comptée, même si les deux sont dans la liste', () => {
+    const base = { type: 'wc', surface: 2, etat: 'bon', equipement: 'partiel', mode: 'artisan' };
+    assert.deepEqual(coutPiece({ ...base, elements: ['cuvette', 'suspendu'] }, R), coutPiece({ ...base, elements: ['suspendu'] }, R));
+  });
+
+  test('équipement partiel sans élément coché : rien à acheter', () => {
+    const c = coutPiece({ type: 'sdb', surface: 5, etat: 'bon', equipement: 'partiel', elements: [], mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 0, moyen: 0, haut: 0 });
+  });
+
+  test('équipement partiel d’une estimation antérieure (sans liste) : part du forfait', () => {
+    const c = coutPiece({ type: 'wc', surface: 2, etat: 'bon', equipement: 'partiel', elements: null, mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 750, moyen: 1250, haut: 2000 });
+  });
+
+  test('les éléments ne comptent qu’en équipement partiel', () => {
+    const c = coutPiece({ type: 'wc', surface: 2, etat: 'bon', equipement: 'complet', elements: ['laveMains'], mode: 'artisan' }, R);
+    assert.deepEqual(c, { bas: 1500, moyen: 2500, haut: 4000 });
+  });
+
+  test('réglages d’avant la v0.8.0 (forfait unique) : complétés, forfait complet conservé', () => {
+    const anciens = reglagesParDefaut();
+    const forfaits = { cuisine: [4000, 9999, 15000], sdb: [5000, 9000, 15000], wc: [1500, 2500, 4000] };
+    for (const [cle, eq] of Object.entries(anciens.grille.equipements)) {
+      delete eq.elements; delete eq.pose;
+      [eq.bas, eq.moyen, eq.haut] = forfaits[cle];
+    }
+    anciens.coefMateriaux = { pieces: 0.4, equipements: 0.4, postes: 0.4 };
+    const r = completerReglages(anciens);
+    assert.deepEqual(r.grille.equipements.sdb.elements, REGLAGES_DEFAUT.grille.equipements.sdb.elements);
+    assert.equal(r.grille.equipements.cuisine.pose.moyen, 9999 - 6500, 'pose = forfait − éléments');
+    assert.equal(r.grille.equipements.cuisine.moyen, undefined, 'ancien forfait retiré');
+    assert.deepEqual(r.coefMateriaux, { pieces: 0.4, postes: 0.4, pose: REGLAGES_DEFAUT.coefMateriaux.pose });
+    const cuisine = { type: 'cuisine', surface: 0, etat: 'bon', equipement: 'complet', mode: 'artisan' };
+    assert.equal(coutPiece(cuisine, r).moyen, 9999);
+  });
+
+  test('réglages de la v0.8.0 (éléments sans mobilier ni pose) : mobilier ajouté, forfait conservé', () => {
+    const v080 = reglagesParDefaut();
+    const cuisine = v080.grille.equipements.cuisine;
+    delete cuisine.elements.meubles; delete cuisine.pose;
+    for (const el of Object.values(cuisine.elements)) delete el.categorie;
+    Object.assign(cuisine, { bas: 4000, moyen: 8000, haut: 15000 });
+    const r = completerReglages(v080);
+    assert.deepEqual(r.grille.equipements.cuisine, REGLAGES_DEFAUT.grille.equipements.cuisine);
+  });
+
+  test('le moteur accepte des réglages non complétés, sans les modifier', () => {
+    const anciens = reglagesParDefaut();
+    const eq = anciens.grille.equipements.wc;
+    delete eq.elements; delete eq.pose;
+    Object.assign(eq, { bas: 1500, moyen: 2500, haut: 4000 });
+    const avant = JSON.stringify(anciens);
+    assert.deepEqual(coutPiece({ type: 'wc', surface: 0, etat: 'bon', equipement: 'complet', mode: 'artisan' }, anciens), { bas: 1500, moyen: 2500, haut: 4000 });
+    assert.equal(JSON.stringify(anciens), avant);
   });
 
   test('quantité par défaut des postes', () => {
@@ -300,7 +395,7 @@ describe('prix d\u2019achat retenu', () => {
     const r = calculerEstimation(e);
     assert.equal(r.complet, true);
     assert.equal(r.prixNegocie, false);
-    proche(r.scenarios.central.margeNette, 45910.60, 'identique au cas de référence');
+    proche(r.scenarios.central.margeNette, 41626.60, 'identique au cas de référence');
   });
 
   test('le prix maximum est donné même sans aucun prix d\u2019achat (revente seule)', () => {
@@ -309,7 +404,7 @@ describe('prix d\u2019achat retenu', () => {
     e.bien.prixAffiche = null;
     const r = calculerEstimation(e);
     assert.equal(r.complet, false);
-    proche(r.prixAchatMax, 150226.91);
+    proche(r.prixAchatMax, 146241.80);
     assert.ok(r.prixAchatMaxPrudent < r.prixAchatMax, 'le prix prudent (pessimiste) est plus bas');
   });
 });
@@ -317,11 +412,11 @@ describe('prix d\u2019achat retenu', () => {
 describe('budget travaux maximum', () => {
   test('cas de référence : budget pour 20 % au prix de 150 000 €', () => {
     // Coût de revient cible = 274 000 / 1,2 = 228 333,33
-    // Hors travaux = 228 089,40 − 51 474 − 1 790,40 = 174 825
-    // Budget = 228 333,33 − 174 825 = 53 508,33 (contre 53 264,40 estimés)
+    // Hors travaux = 232 373,40 − 55 614 − 1 934,40 = 174 825
+    // Budget = 228 333,33 − 174 825 = 53 508,33 (contre 57 548,40 estimés : marge sous la cible)
     const r = calculerEstimation(casReference());
     proche(r.budgetTravauxMax, 274000 / 1.2 - 174825);
-    assert.ok(r.budgetTravauxMax > r.scenarios.central.detail.travaux + r.scenarios.central.detail.dommagesOuvrage);
+    assert.ok(r.budgetTravauxMax < r.scenarios.central.detail.travaux + r.scenarios.central.detail.dommagesOuvrage);
   });
 
   test('négatif quand le prix d\u2019achat seul empêche la cible', () => {

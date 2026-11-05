@@ -18,6 +18,13 @@ export const MIGRATIONS = {
     e.bien.ges ??= 'inconnu';
     return e;
   },
+  // v3 → v4 : éléments d'équipement à acheter (équipement « partiel »).
+  // Les pièces existantes gardent `elements: null` : leur équipement partiel reste calculé
+  // en part du forfait, pour ne pas changer une estimation déjà enregistrée.
+  3: (e) => {
+    for (const p of e.pieces ?? []) if (!('elements' in p)) p.elements = null;
+    return e;
+  },
 };
 
 export class ErreurMigration extends Error {}

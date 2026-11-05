@@ -1,7 +1,7 @@
 // Magasin des estimations : cache en mémoire + persistance IndexedDB (sauvegarde différée).
 import { creerEstimation, copierEstimation, nouvelId } from './schema.js';
 import { migrer } from './migrations.js';
-import { reglagesParDefaut } from '../calc/defaults.js';
+import { reglagesParDefaut, completerReglages } from '../calc/defaults.js';
 import * as db from './db.js';
 
 const DELAI_SAUVEGARDE = 400; // ms
@@ -19,7 +19,7 @@ export async function charger() {
       console.error('Estimation illisible ignorée', brute?.id, err);
     }
   }
-  reglagesCourants = reglages ?? reglagesParDefaut();
+  reglagesCourants = completerReglages(reglages ?? reglagesParDefaut());
   // Demande au navigateur de ne pas effacer les données en cas de manque d'espace.
   navigator.storage?.persist?.().catch(() => {});
   window.addEventListener('pagehide', vider);
@@ -30,7 +30,7 @@ export async function charger() {
 export const reglages = () => reglagesCourants ?? reglagesParDefaut();
 
 export async function enregistrerReglages(r) {
-  reglagesCourants = r;
+  reglagesCourants = completerReglages(r);
   await db.ecrire('meta', r, 'reglages');
 }
 

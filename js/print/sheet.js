@@ -152,7 +152,10 @@ function libellePiece(e, ligneTravaux) {
   if (!p) return ligneTravaux.libelle;
   const type = TYPES_PIECES.find((t) => t.id === p.type)?.libelle;
   const etat = ETATS.find((x) => x.id === p.etat)?.libelle;
-  return [p.nom || type, p.surface ? format.surface(p.surface) : null, etat].filter(Boolean).join(' · ');
+  const equip = !TYPES_PIECES.find((t) => t.id === p.type)?.equipement || p.equipement === 'aucun' ? null
+    : p.equipement === 'complet' ? 'équip. complet'
+      : Array.isArray(p.elements) ? `équip. partiel (${p.elements.length})` : 'équip. partiel';
+  return [p.nom || type, p.surface ? format.surface(p.surface) : null, etat, equip].filter(Boolean).join(' · ');
 }
 
 function blocTravaux(e, r, niveau) {
