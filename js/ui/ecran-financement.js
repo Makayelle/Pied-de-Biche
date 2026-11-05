@@ -1,6 +1,6 @@
 // Étape 4 — Financement, portage et revente.
 import { h, format } from './dom.js';
-import { champNombre, choix, interrupteur, section, duo } from './composants.js';
+import { champNombre, choix, interrupteur, section, duo, legendeObligatoire } from './composants.js';
 
 const MODES_REVENTE = [
   { valeur: 'saisi', libelle: 'Prix saisi' },
@@ -24,6 +24,7 @@ export function ecranFinancement(ctx) {
 
   return [
     h('h1', {}, 'Financement & revente'),
+    legendeObligatoire(),
 
     section('Acquisition',
       champNombre({ libelle: 'Frais d’agence acquéreur', unite: '€', valeur: f.fraisAgenceAcquereur, aide: 'Si à la charge de l’acheteur', onChange: pf('fraisAgenceAcquereur') }),
@@ -74,8 +75,8 @@ export function ecranFinancement(ctx) {
     section('Revente',
       choix({ libelle: 'Prix de revente', options: MODES_REVENTE, valeur: rv.mode, onChange: pr('mode', { structure: true }) }),
       rv.mode === 'm2'
-        ? champNombre({ libelle: 'Prix au m² du secteur', unite: '€/m²', valeur: rv.prixM2, onChange: pr('prixM2') })
-        : champNombre({ libelle: 'Prix de revente', unite: '€', valeur: rv.prix, onChange: pr('prix') }),
+        ? champNombre({ libelle: 'Prix au m² du secteur', unite: '€/m²', valeur: rv.prixM2, obligatoire: true, onChange: pr('prixM2') })
+        : champNombre({ libelle: 'Prix de revente', unite: '€', valeur: rv.prix, obligatoire: true, onChange: pr('prix') }),
       rv.mode === 'm2'
         ? calcule(ctx, (r) => (e.bien.surfaceHabitable
           ? `Soit ${format.euros(central(r).prixRevente)} pour ${format.surface(e.bien.surfaceHabitable)}`

@@ -1,6 +1,6 @@
 // Étape 3 — Gros postes : travaux globaux au bien.
 import { h, format } from './dom.js';
-import { champNombre, choix, interrupteur, section, duo } from './composants.js';
+import { champNombre, choix, interrupteur, section, duo, legendeObligatoire } from './composants.js';
 import { sortieCout } from './ecran-pieces.js';
 import { quantitePoste } from '../calc/engine.js';
 
@@ -29,12 +29,14 @@ function lignePoste(ctx, poste) {
         unite: UNITE_QTE[def.unite], valeur: poste.quantite,
         placeholder: qteParDefaut ? String(qteParDefaut) : '',
         aide: def.unite === 'm2hab' ? 'Vide : surface habitable' : null,
+        // Sans quantité, seuls les forfaits (1) et les postes au m² habitable ont une valeur par défaut.
+        obligatoire: def.unite !== 'forfait' && def.unite !== 'm2hab',
         onChange: p('quantite'), id: `qte-${poste.cle}`,
       }),
       poste.cle === 'divers'
         ? champNombre({
           libelle: 'Montant (moyen)', unite: '€', valeur: poste.prix?.moyen ?? null,
-          aide: 'Bas −20 %, haut +30 %',
+          aide: 'Bas −20 %, haut +30 %', obligatoire: true,
           onChange: (v) => ctx.changer(() => {
             poste.prix = v == null ? null : { bas: v * 0.8, moyen: v, haut: v * 1.3 };
           }),
@@ -64,6 +66,7 @@ export function ecranPostes(ctx) {
   const e = ctx.estimation;
   return [
     h('h1', {}, 'Gros postes'),
+    legendeObligatoire(),
     h('p', { class: 'champ__aide' }, 'Cochez les postes à prévoir. Les prix viennent de la grille (modifiable dans les réglages).'),
     h('div', { class: 'carte liste-postes' }, e.postes.map((poste) => lignePoste(ctx, poste))),
 

@@ -78,6 +78,8 @@ function blocPhotos(photos, niveau) {
   );
 }
 
+const classe = (c) => (!c || c === 'inconnu' ? '?' : c);
+
 function blocBien(e) {
   const b = e.bien;
   return h('section', { class: 'f-bloc f-bien' },
@@ -87,7 +89,7 @@ function blocBien(e) {
       ligne('Surface habitable', b.surfaceHabitable ? format.surface(b.surfaceHabitable) : '—'),
       ligne('Terrain', b.surfaceTerrain ? format.surface(b.surfaceTerrain) : '—'),
       ligne('Pièces / niveaux', `${val(b.nbPieces)} / ${val(b.nbNiveaux)}`),
-      ligne('DPE', b.dpe === 'inconnu' ? 'Inconnu' : b.dpe),
+      ligne('DPE / GES', `${classe(b.dpe)} / ${classe(b.ges)}`),
       ligne('Année', val(b.anneeConstruction)),
       ligne('Source', SOURCES[b.source] ?? '—'),
       ligne('Prix affiché', euros(b.prixAffiche)),

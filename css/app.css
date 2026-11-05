@@ -252,6 +252,9 @@ textarea.champ__saisie { resize: vertical; min-height: 6rem; }
   border-left: 1px solid var(--c-bordure); white-space: nowrap;
 }
 .champ__aide { display: block; font-size: var(--t-xs); color: var(--c-texte-doux); margin: var(--e-1) 0 0; font-weight: 400; }
+/* Champs nécessaires au calcul : astérisque en couleur d'accent, expliqué par la légende en tête d'écran. */
+.champ__requis { color: var(--c-accent); font-weight: 700; }
+.legende-requis { margin: 0 0 var(--e-3); }
 
 .duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--e-3); align-items: start; }
 /* Aligne les cases même si un libellé passe sur deux lignes (libellé / case / aide). */

@@ -33,7 +33,19 @@ describe('migrations', () => {
     assert.deepEqual(migrer(e), e);
   });
 
-  test('le schéma courant est 2', () => assert.equal(SCHEMA_VERSION, 2));
+  test('le schéma courant est 3', () => assert.equal(SCHEMA_VERSION, 3));
+
+  test('migration v2 → v3 : ajout du GES, inconnu par défaut', () => {
+    const v2 = exemple();
+    v2.schemaVersion = 2;
+    delete v2.bien.ges;
+    const v3 = migrer(v2);
+    assert.equal(v3.schemaVersion, 3);
+    assert.equal(v3.bien.ges, 'inconnu');
+    assert.equal(v3.bien.dpe, exemple().bien.dpe);
+  });
+
+  test('une estimation neuve a un GES inconnu', () => assert.equal(creerEstimation().bien.ges, 'inconnu'));
 
   test('migration v1 → v2 : une estimation existante passe en mode détaillé', () => {
     const v1 = exemple();
@@ -42,7 +54,7 @@ describe('migrations', () => {
     delete v1.bien.etatGeneral;
     delete v1.bien.modeGeneral;
     const v2 = migrer(v1);
-    assert.equal(v2.schemaVersion, 2);
+    assert.equal(v2.schemaVersion, SCHEMA_VERSION);
     assert.equal(v2.mode, 'detaille');
     assert.equal(v2.bien.etatGeneral, 'renover');
     assert.equal(calculerEstimation(v2).scenarios.central.margeNette, calculerEstimation(exemple()).scenarios.central.margeNette);
@@ -53,15 +65,16 @@ describe('migrations', () => {
     v1.schemaVersion = 1;
     delete v1.mode;
     const r = analyserImport(await construireExport({ estimations: [v1] }));
-    assert.equal(r.estimations[0].schemaVersion, 2);
+    assert.equal(r.estimations[0].schemaVersion, SCHEMA_VERSION);
     assert.equal(r.estimations[0].mode, 'detaille');
   });
 
   test('applique les migrations dans l’ordre sans modifier la source', () => {
     const source = { schemaVersion: 1, a: 1 };
-    const migrations = { 1: (e) => ({ ...e, b: e.a + 1 }), 2: (e) => ({ ...e, c: e.b * 10 }) };
-    const r = migrer(source, { migrations, versionCible: 3 });
-    assert.deepEqual(r, { schemaVersion: 3, a: 1, b: 2, c: 20 });
+    // Version cible fictive, au-delà du schéma réel, pour tester l'enchaînement seul (sans normalisation).
+    const migrations = { 1: (e) => ({ ...e, b: e.a + 1 }), 2: (e) => ({ ...e, c: e.b * 10 }), 3: (e) => ({ ...e, d: e.c + 1 }) };
+    const r = migrer(source, { migrations, versionCible: SCHEMA_VERSION + 1 });
+    assert.deepEqual(r, { schemaVersion: 4, a: 1, b: 2, c: 20, d: 21 });
     assert.deepEqual(source, { schemaVersion: 1, a: 1 });
   });
 
